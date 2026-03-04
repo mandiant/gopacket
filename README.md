@@ -27,6 +27,13 @@ To uninstall:
 ./install.sh --uninstall
 ```
 
+## Proxychains Support                                                                                                                                                                                              
+All gopacket tools work through proxychains out of the box. Because gopacket is compiled to native static binaries (not interpreted like Python), proxychains can intercept all network calls without issue. This makes it straightforward to route traffic through SOCKS proxies, C2 tunnels, or SSH port forwards during engagements.                                                                                       
+```bash
+proxychains gopacket-secretsdump 'domain/user:password@target'       
+proxychains gopacket-smbclient -k -no-pass 'domain/user@dc.domain.local'
+```       
+
 ## Tools (63)
 
 ### Remote Execution
