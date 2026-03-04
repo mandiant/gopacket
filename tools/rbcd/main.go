@@ -17,7 +17,6 @@ import (
 
 func printUsage() {
 	fmt.Fprintf(os.Stderr, `gopacket v0.1.0 - Impacket Clone in Go
-Copyright 2026 gopacket Project
 
 usage: rbcd [-h] [-delegate-to DELEGATE_TO] [-delegate-from DELEGATE_FROM]
             [-action {read,write,remove,flush}] [-use-ldaps] [-debug] [-ts]

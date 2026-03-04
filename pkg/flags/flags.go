@@ -128,7 +128,6 @@ func Parse() *Options {
 
 func printBanner() {
 	fmt.Fprintln(os.Stderr, "gopacket v0.1.0 - Impacket Clone in Go")
-	fmt.Fprintln(os.Stderr, "Copyright 2026 gopacket Project")
 }
 
 func printGroupedHelp() {

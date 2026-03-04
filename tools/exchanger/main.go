@@ -113,7 +113,6 @@ func (w *writer) Println(args ...interface{}) {
 
 func printBanner() {
 	fmt.Println("gopacket Exchanger v" + VERSION + " - MS Exchange NSPI Client")
-	fmt.Println("Copyright 2026 gopacket Project")
 	fmt.Println()
 }
 

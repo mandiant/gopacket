@@ -26,7 +26,6 @@ var (
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "gopacket v0.1.0 - Impacket Clone in Go")
-		fmt.Fprintln(os.Stderr, "Copyright 2026 gopacket Project")
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "LDAP signing and channel binding enumeration utility.")
 		fmt.Fprintln(os.Stderr)
