@@ -1,0 +1,13 @@
+package smb2
+
+import (
+	"bytes"
+	"testing"
+)
+
+func TestKDF(t *testing.T) {
+	expected := []byte{0xca, 0x39, 0x28, 0xa6, 0x66, 0x4e, 0x3c, 0xfd, 0xc8, 0x7e, 0xef, 0x2d, 0xff, 0x7c, 0x78, 0xac}
+	if !bytes.Equal(kdf([]byte("foo"), []byte("bar"), []byte("baz")), expected) {
+		t.Error("fail")
+	}
+}
