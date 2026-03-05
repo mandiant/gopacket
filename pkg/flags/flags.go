@@ -214,7 +214,9 @@ func (o *Options) ApplyToSession(target *session.Target, creds *session.Credenti
 	if o.TargetIP != "" {
 		target.IP = o.TargetIP
 	}
-	if o.Port != 445 && o.Port != 0 {
+	if target.Port == 0 {
+		target.Port = o.Port
+	} else if o.Port != 445 {
 		target.Port = o.Port
 	}
 	if o.IPv6 {
