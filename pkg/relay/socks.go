@@ -3,6 +3,7 @@ package relay
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"strconv"
@@ -82,12 +83,12 @@ func (s *SOCKSServer) AddRelay(target, username, scheme string, client ProtocolC
 		s.activeRelays[key] = make(map[string]*ActiveRelay)
 	}
 
-	// If a relay for this username already exists, kill the old one (Impacket behavior)
-	if existing, ok := s.activeRelays[key][userKey]; ok {
-		if build.Debug {
-			log.Printf("[D] SOCKS: replacing existing relay for %s@%s", username, target)
-		}
-		existing.Client.Kill()
+	// If a relay for this username already exists, discard the new connection (Impacket behavior:
+	// keeps the existing session alive and kills the incoming duplicate)
+	if _, ok := s.activeRelays[key][userKey]; ok {
+		log.Printf("[*] SOCKS: Relay for %s at %s already exists. Discarding", username, target)
+		client.Kill()
+		return
 	}
 
 	s.activeRelays[key][userKey] = &ActiveRelay{
@@ -225,10 +226,16 @@ func (s *SOCKSServer) keepAliveLoop() {
 		case <-s.stopCh:
 			return
 		case <-ticker.C:
+			// Collect dead relays under RLock, then delete under Lock
+			type deadRelay struct {
+				target string
+				user   string
+			}
+			var dead []deadRelay
+
 			s.mu.RLock()
 			for target, users := range s.activeRelays {
 				for user, relay := range users {
-					// Skip relays that are actively in use by a SOCKS client
 					relay.mu.Lock()
 					inUse := relay.InUse
 					relay.mu.Unlock()
@@ -240,19 +247,25 @@ func (s *SOCKSServer) keepAliveLoop() {
 						if build.Debug {
 							log.Printf("[D] SOCKS: keepalive failed for %s@%s: %v", user, target, err)
 						}
-						// Remove dead relay
-						s.mu.RUnlock()
-						s.mu.Lock()
-						delete(users, user)
-						if len(users) == 0 {
-							delete(s.activeRelays, target)
-						}
-						s.mu.Unlock()
-						s.mu.RLock()
+						dead = append(dead, deadRelay{target, user})
 					}
 				}
 			}
 			s.mu.RUnlock()
+
+			// Remove dead relays under write lock
+			if len(dead) > 0 {
+				s.mu.Lock()
+				for _, d := range dead {
+					if users, ok := s.activeRelays[d.target]; ok {
+						delete(users, d.user)
+						if len(users) == 0 {
+							delete(s.activeRelays, d.target)
+						}
+					}
+				}
+				s.mu.Unlock()
+			}
 		}
 	}
 }
@@ -332,6 +345,13 @@ func (s *SOCKSServer) handleConnection(conn net.Conn) {
 		log.Printf("[D] SOCKS: CONNECT request to %s:%d", targetHost, targetPort)
 	}
 
+	// DNS pass-through: port 53 connections bypass relay lookup and connect directly.
+	// Matches Impacket's socksserver.py which forwards DNS traffic transparently.
+	if targetPort == 53 {
+		s.handleDNSPassthrough(conn, targetHost, targetPort)
+		return
+	}
+
 	// Check if we have any relays for this target
 	scheme := s.getSchemeForTarget(targetHost, targetPort)
 	if scheme == "" {
@@ -405,4 +425,35 @@ func (s *SOCKSServer) handleConnection(conn net.Conn) {
 	relay.mu.Unlock()
 
 	log.Printf("[*] SOCKS: %s session ended for %s", strings.ToUpper(scheme), matchedUser)
+}
+
+// handleDNSPassthrough creates a direct TCP connection to the target DNS server
+// and proxies data bidirectionally, bypassing the relay session lookup.
+// Matches Impacket's socksserver.py DNS pass-through behavior.
+func (s *SOCKSServer) handleDNSPassthrough(clientConn net.Conn, host string, port int) {
+	target := fmt.Sprintf("%s:%d", host, port)
+
+	remotConn, err := net.DialTimeout("tcp", target, 10*time.Second)
+	if err != nil {
+		if build.Debug {
+			log.Printf("[D] SOCKS: DNS pass-through to %s failed: %v", target, err)
+		}
+		clientConn.Write([]byte{0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0}) // connection refused
+		return
+	}
+	defer remotConn.Close()
+
+	// Send SOCKS success reply
+	clientConn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+	clientConn.SetDeadline(time.Time{})
+
+	if build.Debug {
+		log.Printf("[D] SOCKS: DNS pass-through established to %s", target)
+	}
+
+	// Bidirectional proxy
+	errCh := make(chan error, 2)
+	go func() { _, err := io.Copy(remotConn, clientConn); errCh <- err }()
+	go func() { _, err := io.Copy(clientConn, remotConn); errCh <- err }()
+	<-errCh
 }

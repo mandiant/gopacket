@@ -169,13 +169,11 @@ func runLDAPShell(conn net.Conn, session interface{}) {
 				fmt.Fprintf(conn, "%s\n", dn)
 			}
 		case "who":
-			sr, err := client.Search("", "(objectClass=*)", []string{"*"})
+			res, err := client.Conn.WhoAmI(nil)
 			if err != nil {
 				fmt.Fprintf(conn, "Error: %v\n", err)
-			} else if len(sr.Entries) > 0 {
-				for _, attr := range sr.Entries[0].Attributes {
-					fmt.Fprintf(conn, "%s: %s\n", attr.Name, strings.Join(attr.Values, ", "))
-				}
+			} else {
+				fmt.Fprintf(conn, "%s\n", res.AuthzID)
 			}
 		case "search":
 			if len(parts) < 2 {

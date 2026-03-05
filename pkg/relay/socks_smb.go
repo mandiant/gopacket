@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 
 	"gopacket/internal/build"
 )
@@ -203,6 +204,16 @@ func (p *SMBSocksPlugin) SkipAuthentication(clientConn net.Conn, sd *SessionData
 		return "", fmt.Errorf("no relay found for user %s", username)
 	}
 
+	// Check if relay is already in use by another SOCKS client
+	relay.mu.Lock()
+	if relay.InUse {
+		relay.mu.Unlock()
+		denyResp := buildSessionSetupResponse(hdr.MessageID, sessionID, STATUS_LOGON_FAILURE, nil)
+		sendPacket(clientConn, denyResp)
+		return "", fmt.Errorf("relay for %s is already in use", username)
+	}
+	relay.mu.Unlock()
+
 	// Get the real session ID from the relay client
 	smbClient, ok := relay.Client.(*SMBRelayClient)
 	if ok && smbClient != nil {
@@ -330,7 +341,7 @@ func (p *SMBSocksPlugin) TunnelConnection(clientConn net.Conn, relay *ActiveRela
 		}
 
 		relay.mu.Lock()
-		relay.LastUsed = relay.LastUsed // touch to keep alive
+		relay.LastUsed = time.Now()
 		relay.mu.Unlock()
 	}
 }

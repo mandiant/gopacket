@@ -188,10 +188,10 @@ func (c *LDAPRelayClient) SendAuth(ntlmType3 []byte) error {
 			log.Printf("[D] LDAP relay client: SICILY NTLM bind succeeded")
 		}
 
-		// Wrap the authed TCP connection in goldap.Conn for search/modify
-		c.ldapConn = goldap.NewConn(c.conn, c.useTLS)
-		c.ldapConn.Start()
-
+		// Don't create goldap.Conn here. goldap.Conn.Start() spawns a persistent
+		// reader goroutine that would compete with the SOCKS plugin for socket reads.
+		// Impacket avoids this because ldap3 is synchronous (no background threads).
+		// Create goldap.Conn lazily in GetSession() — only needed for attack mode.
 		return nil
 
 	case ldapResultStrongerAuthRequired:
@@ -210,10 +210,18 @@ func (c *LDAPRelayClient) SendAuth(ntlmType3 []byte) error {
 
 // GetSession returns a *gopacketldap.Client wrapping the authenticated connection.
 // LDAP attack modules use this for Search, Modify, etc.
+// Creates the goldap.Conn lazily on first call (not in SendAuth, to avoid spawning
+// a background reader goroutine that would conflict with SOCKS plugin raw reads).
 // Implements ProtocolClient.
 func (c *LDAPRelayClient) GetSession() interface{} {
-	if c.ldapConn == nil {
+	if !c.bound || c.conn == nil {
 		return nil
+	}
+	// Lazily create goldap.Conn — only attack mode calls GetSession,
+	// SOCKS mode uses the raw connection for tunneling.
+	if c.ldapConn == nil {
+		c.ldapConn = goldap.NewConn(c.conn, c.useTLS)
+		c.ldapConn.Start()
 	}
 	client := &gopacketldap.Client{
 		Conn: c.ldapConn,
@@ -222,15 +230,63 @@ func (c *LDAPRelayClient) GetSession() interface{} {
 }
 
 // KeepAlive sends a rootDSE query to keep the session alive.
+// In SOCKS mode (ldapConn is nil), uses raw BER on the TCP connection to avoid
+// spawning goldap's background reader goroutine. This matches Impacket's approach
+// where ldap3 operations are synchronous and don't interfere with SOCKS tunnel reads.
 // Implements ProtocolClient.
 func (c *LDAPRelayClient) KeepAlive() error {
-	if c.ldapConn == nil {
-		return fmt.Errorf("no LDAP session")
+	if c.ldapConn != nil {
+		// Attack mode: use goldap
+		sr := goldap.NewSearchRequest("", goldap.ScopeBaseObject, goldap.NeverDerefAliases,
+			0, 0, false, "(objectClass=*)", []string{"namingContexts"}, nil)
+		_, err := c.ldapConn.Search(sr)
+		return err
 	}
-	sr := goldap.NewSearchRequest("", goldap.ScopeBaseObject, goldap.NeverDerefAliases,
-		0, 0, false, "(objectClass=*)", []string{"namingContexts"}, nil)
-	_, err := c.ldapConn.Search(sr)
-	return err
+
+	if c.conn == nil {
+		return fmt.Errorf("no LDAP connection")
+	}
+
+	// SOCKS mode: raw BER rootDSE search (no goldap.Conn to avoid background reader)
+	c.messageID++
+	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "LDAP Message")
+	packet.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, c.messageID, "MessageID"))
+
+	searchReq := ber.Encode(ber.ClassApplication, ber.TypeConstructed, 3, nil, "SearchRequest")
+	searchReq.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, "", "baseObject"))
+	searchReq.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagEnumerated, int64(0), "scope"))       // baseObject
+	searchReq.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagEnumerated, int64(0), "derefAliases")) // neverDerefAliases
+	searchReq.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, int64(0), "sizeLimit"))
+	searchReq.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, int64(0), "timeLimit"))
+	searchReq.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, ber.TagBoolean, false, "typesOnly"))
+	// Filter: (objectClass=*)
+	searchReq.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, 7, "*", "present"))
+	// Attributes: namingContexts
+	attrs := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "attributes")
+	attrs.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, "namingContexts", ""))
+	searchReq.AppendChild(attrs)
+	packet.AppendChild(searchReq)
+
+	if _, err := c.conn.Write(packet.Bytes()); err != nil {
+		return fmt.Errorf("keepalive write: %v", err)
+	}
+
+	// Read response(s) — expect SearchResultEntry + SearchResultDone
+	c.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	defer c.conn.SetReadDeadline(time.Time{})
+	for {
+		resp, err := ber.ReadPacket(c.conn)
+		if err != nil {
+			return fmt.Errorf("keepalive read: %v", err)
+		}
+		if len(resp.Children) >= 2 {
+			op := resp.Children[1]
+			// SearchResultDone (APPLICATION 5) = we're done
+			if op.ClassType == ber.ClassApplication && op.Tag == 5 {
+				return nil
+			}
+		}
+	}
 }
 
 // Kill terminates the LDAP connection.
