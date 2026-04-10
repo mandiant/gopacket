@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Jacob Paullus
 
 // Package wmi implements the WMI Remote Protocol (MS-WMI).
 package wmi

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Jacob Paullus
 
 // Package dcom implements the DCOM Remote Protocol (MS-DCOM).
 package dcom

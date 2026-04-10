@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Jacob Paullus
 
 // Package mapi provides MAPI (Messaging Application Programming Interface)
 // constants and helpers for working with Exchange address book properties.

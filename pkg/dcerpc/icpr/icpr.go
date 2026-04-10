@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Jacob Paullus
 
 // Package icpr implements the MS-ICPR (ICertPassage Remote Protocol) interface.
 // This is used for certificate enrollment via DCE/RPC, as an alternative to

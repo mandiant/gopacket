@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Jacob Paullus
 
 // Package dpapi implements DPAPI (Data Protection API) parsing and decryption
 // for Windows secrets including master keys, credentials, and vaults.

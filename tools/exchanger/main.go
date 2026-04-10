@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Jacob Paullus
 
 // exchanger is a tool for connecting to MS Exchange via RPC over HTTP v2
 // and querying the NSPI (Name Service Provider Interface) to enumerate

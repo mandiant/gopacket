@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Jacob Paullus
 
 // Package gkdi implements the MS-GKDI (Group Key Distribution Protocol) RPC client.
 // This is used to retrieve group keys for decrypting LAPS v2 encrypted passwords.

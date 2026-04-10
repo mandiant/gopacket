@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Jacob Paullus
 
 // Package dpaping implements DPAPI-NG (Data Protection API - Next Generation) decryption
 // for LAPS v2 encrypted passwords.

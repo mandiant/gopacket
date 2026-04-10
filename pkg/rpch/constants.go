@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Jacob Paullus
 
 // Package rpch implements RPC over HTTP v2 transport as per MS-RPCH specification.
 // This is a modular library that can be used by multiple tools for Exchange and
