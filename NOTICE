@@ -1,0 +1,37 @@
+gopacket
+Copyright 2026 Jacob Paullus
+
+This product is licensed under the Apache License, Version 2.0 (the "License");
+you may not use this product except in compliance with the License. You may
+obtain a copy of the License in the LICENSE file distributed with this work, or
+at http://www.apache.org/licenses/LICENSE-2.0.
+
+------------------------------------------------------------------------------
+Acknowledgments
+------------------------------------------------------------------------------
+
+This project is a Go reimplementation of concepts, protocols, tool designs,
+and command-line interfaces from Impacket (https://github.com/fortra/impacket),
+originally developed by SecureAuth Corporation and currently maintained by
+Fortra. Impacket is distributed under its own permissive license. No Impacket
+source code is included in this project; all code in this repository
+(excluding the third-party components listed below) was written from scratch
+in Go after studying Microsoft protocol specifications and Impacket's behavior.
+
+Output formats and command-line flags of several tools in this project
+intentionally mirror their Impacket counterparts to ease migration for
+existing users. This functional compatibility does not constitute use of
+Impacket's source code.
+
+------------------------------------------------------------------------------
+Third-Party Components
+------------------------------------------------------------------------------
+
+This product includes the following third-party software, each of which is
+distributed under its own license. See the corresponding source files for
+the full license text.
+
+  * pkg/thirdparty/smb2/
+    A vendored SMB2/SMB3 client library originally authored by Hiroshi Ioka
+    and contributors, distributed under the BSD 3-Clause License.
+    Upstream: https://github.com/hirochachacha/go-smb2

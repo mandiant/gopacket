@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package kerberos
 
 import (
@@ -50,10 +53,10 @@ type TicketConfig struct {
 
 // TicketResult contains the generated ticket
 type TicketResult struct {
-	Ticket    []byte
+	Ticket     []byte
 	SessionKey []byte
-	EncType   int32
-	Filename  string
+	EncType    int32
+	Filename   string
 }
 
 // DefaultGroups returns the default high-privilege group RIDs
@@ -311,16 +314,16 @@ func CreateTicket(cfg *TicketConfig) (*TicketResult, error) {
 
 // ASN.1 structures for ticket construction
 type encTicketPartASN1 struct {
-	Flags             gokrbasn1.BitString     `asn1:"explicit,tag:0"`
-	Key               encryptionKeyASN1       `asn1:"explicit,tag:1"`
-	CRealm            string                  `asn1:"generalstring,explicit,tag:2"`
-	CName             principalNameASN1       `asn1:"explicit,tag:3"`
-	Transited         transitedEncodingASN1   `asn1:"explicit,tag:4"`
-	AuthTime          time.Time               `asn1:"generalized,explicit,tag:5"`
-	StartTime         time.Time               `asn1:"generalized,explicit,optional,tag:6"`
-	EndTime           time.Time               `asn1:"generalized,explicit,tag:7"`
-	RenewTill         time.Time               `asn1:"generalized,explicit,optional,tag:8"`
-	AuthorizationData authorizationDataASN1   `asn1:"explicit,optional,tag:10"`
+	Flags             gokrbasn1.BitString   `asn1:"explicit,tag:0"`
+	Key               encryptionKeyASN1     `asn1:"explicit,tag:1"`
+	CRealm            string                `asn1:"generalstring,explicit,tag:2"`
+	CName             principalNameASN1     `asn1:"explicit,tag:3"`
+	Transited         transitedEncodingASN1 `asn1:"explicit,tag:4"`
+	AuthTime          time.Time             `asn1:"generalized,explicit,tag:5"`
+	StartTime         time.Time             `asn1:"generalized,explicit,optional,tag:6"`
+	EndTime           time.Time             `asn1:"generalized,explicit,tag:7"`
+	RenewTill         time.Time             `asn1:"generalized,explicit,optional,tag:8"`
+	AuthorizationData authorizationDataASN1 `asn1:"explicit,optional,tag:10"`
 }
 
 type encryptionKeyASN1 struct {
@@ -346,10 +349,10 @@ type authorizationDataEntryASN1 struct {
 }
 
 type ticketASN1 struct {
-	TktVNO  int                 `asn1:"explicit,tag:0"`
-	Realm   string              `asn1:"generalstring,explicit,tag:1"`
-	SName   principalNameASN1   `asn1:"explicit,tag:2"`
-	EncPart encryptedDataASN1   `asn1:"explicit,tag:3"`
+	TktVNO  int               `asn1:"explicit,tag:0"`
+	Realm   string            `asn1:"generalstring,explicit,tag:1"`
+	SName   principalNameASN1 `asn1:"explicit,tag:2"`
+	EncPart encryptedDataASN1 `asn1:"explicit,tag:3"`
 }
 
 type encryptedDataASN1 struct {

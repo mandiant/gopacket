@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // Package nspi implements MS-NSPI (Name Service Provider Interface) protocol
 // for querying Exchange address books via RPC over HTTP v2.
 // This is a modular library that can be used by multiple tools.
@@ -167,22 +170,22 @@ const (
 
 // NSPI Operation Numbers
 const (
-	OP_NspiBind           = 0
-	OP_NspiUnbind         = 1
-	OP_NspiUpdateStat     = 2
-	OP_NspiQueryRows      = 3
-	OP_NspiSeekEntries    = 4
-	OP_NspiGetMatches     = 5
-	OP_NspiResortRestrict = 6
-	OP_NspiDNToMId        = 7
-	OP_NspiGetPropList    = 8
-	OP_NspiGetProps       = 9
-	OP_NspiCompareMIds    = 10
-	OP_NspiModProps       = 11
-	OP_NspiGetSpecialTable= 12
-	OP_NspiGetTemplateInfo= 13
-	OP_NspiModLinkAtt     = 14
-	OP_NspiQueryColumns   = 16
-	OP_NspiResolveNames   = 19
-	OP_NspiResolveNamesW  = 20
+	OP_NspiBind            = 0
+	OP_NspiUnbind          = 1
+	OP_NspiUpdateStat      = 2
+	OP_NspiQueryRows       = 3
+	OP_NspiSeekEntries     = 4
+	OP_NspiGetMatches      = 5
+	OP_NspiResortRestrict  = 6
+	OP_NspiDNToMId         = 7
+	OP_NspiGetPropList     = 8
+	OP_NspiGetProps        = 9
+	OP_NspiCompareMIds     = 10
+	OP_NspiModProps        = 11
+	OP_NspiGetSpecialTable = 12
+	OP_NspiGetTemplateInfo = 13
+	OP_NspiModLinkAtt      = 14
+	OP_NspiQueryColumns    = 16
+	OP_NspiResolveNames    = 19
+	OP_NspiResolveNamesW   = 20
 )

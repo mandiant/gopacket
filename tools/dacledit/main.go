@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -52,8 +55,8 @@ var rightsPresets = map[string][]rightsPreset{
 
 // Backup format
 type backupEntry struct {
-	DN  string `json:"dn"`
-	SD  string `json:"sd"` // hex-encoded raw SD
+	DN string `json:"dn"`
+	SD string `json:"sd"` // hex-encoded raw SD
 }
 
 func main() {

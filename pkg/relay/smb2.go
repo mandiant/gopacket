@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -9,25 +12,25 @@ import (
 
 // SMB2 Commands
 const (
-	SMB2_NEGOTIATE      = 0x0000
-	SMB2_SESSION_SETUP  = 0x0001
-	SMB2_LOGOFF         = 0x0002
-	SMB2_TREE_CONNECT   = 0x0003
+	SMB2_NEGOTIATE       = 0x0000
+	SMB2_SESSION_SETUP   = 0x0001
+	SMB2_LOGOFF          = 0x0002
+	SMB2_TREE_CONNECT    = 0x0003
 	SMB2_TREE_DISCONNECT = 0x0004
-	SMB2_CREATE         = 0x0005
-	SMB2_CLOSE          = 0x0006
-	SMB2_READ           = 0x0008
-	SMB2_WRITE          = 0x0009
-	SMB2_IOCTL          = 0x000B
+	SMB2_CREATE          = 0x0005
+	SMB2_CLOSE           = 0x0006
+	SMB2_READ            = 0x0008
+	SMB2_WRITE           = 0x0009
+	SMB2_IOCTL           = 0x000B
 )
 
 // SMB2 Status codes
 const (
-	STATUS_SUCCESS                = 0x00000000
+	STATUS_SUCCESS                  = 0x00000000
 	STATUS_MORE_PROCESSING_REQUIRED = 0xC0000016
-	STATUS_LOGON_FAILURE          = 0xC000006D
-	STATUS_PENDING                = 0x00000103
-	STATUS_BUFFER_OVERFLOW        = 0x80000005
+	STATUS_LOGON_FAILURE            = 0xC000006D
+	STATUS_PENDING                  = 0x00000103
+	STATUS_BUFFER_OVERFLOW          = 0x80000005
 )
 
 // SMB2 Flags
@@ -92,8 +95,8 @@ const (
 
 // SMB2 Header (64 bytes)
 type SMB2Header struct {
-	ProtocolID    [4]byte  // \xfeSMB
-	StructureSize uint16   // 64
+	ProtocolID    [4]byte // \xfeSMB
+	StructureSize uint16  // 64
 	CreditCharge  uint16
 	Status        uint32
 	Command       uint16
@@ -168,9 +171,9 @@ func buildNegotiateRequest(messageID uint64) []byte {
 
 	// NEGOTIATE request body (36 bytes + 3 dialects × 2 bytes)
 	body := make([]byte, 36+6)
-	binary.LittleEndian.PutUint16(body[0:2], 36)  // StructureSize
-	binary.LittleEndian.PutUint16(body[2:4], 3)   // DialectCount
-	binary.LittleEndian.PutUint16(body[4:6], 0)   // SecurityMode = 0 (no signing for relay)
+	binary.LittleEndian.PutUint16(body[0:2], 36) // StructureSize
+	binary.LittleEndian.PutUint16(body[2:4], 3)  // DialectCount
+	binary.LittleEndian.PutUint16(body[4:6], 0)  // SecurityMode = 0 (no signing for relay)
 	// Reserved (2 bytes) = 0
 	// Capabilities (4 bytes) = 0
 	// ClientGuid (16 bytes) = 0
@@ -192,19 +195,19 @@ func buildNegotiateResponse(messageID uint64, serverGUID [16]byte, securityBuffe
 	// NEGOTIATE response body (65 bytes + security buffer)
 	bodySize := 64 + len(securityBuffer)
 	body := make([]byte, bodySize)
-	binary.LittleEndian.PutUint16(body[0:2], 65)       // StructureSize
+	binary.LittleEndian.PutUint16(body[0:2], 65)                             // StructureSize
 	binary.LittleEndian.PutUint16(body[2:4], SMB2_NEGOTIATE_SIGNING_ENABLED) // SecurityMode
-	binary.LittleEndian.PutUint16(body[4:6], SMB2_DIALECT_0202) // DialectRevision
+	binary.LittleEndian.PutUint16(body[4:6], SMB2_DIALECT_0202)              // DialectRevision
 	// NegotiateContextCount (2 bytes) = 0
-	copy(body[8:24], serverGUID[:])                     // ServerGuid
+	copy(body[8:24], serverGUID[:]) // ServerGuid
 	// Capabilities (4 bytes at offset 24) = 0
-	binary.LittleEndian.PutUint32(body[28:32], 65536)   // MaxTransactSize
-	binary.LittleEndian.PutUint32(body[32:36], 65536)   // MaxReadSize
-	binary.LittleEndian.PutUint32(body[36:40], 65536)   // MaxWriteSize
+	binary.LittleEndian.PutUint32(body[28:32], 65536) // MaxTransactSize
+	binary.LittleEndian.PutUint32(body[32:36], 65536) // MaxReadSize
+	binary.LittleEndian.PutUint32(body[36:40], 65536) // MaxWriteSize
 	// SystemTime (8 bytes at offset 40) = 0
 	// ServerStartTime (8 bytes at offset 48) = 0
-	secBufOffset := uint16(64 + 64)                     // Header(64) + body offset to SecurityBuffer
-	binary.LittleEndian.PutUint16(body[56:58], secBufOffset) // SecurityBufferOffset
+	secBufOffset := uint16(64 + 64)                                         // Header(64) + body offset to SecurityBuffer
+	binary.LittleEndian.PutUint16(body[56:58], secBufOffset)                // SecurityBufferOffset
 	binary.LittleEndian.PutUint16(body[58:60], uint16(len(securityBuffer))) // SecurityBufferLength
 	// NegotiateContextOffset (4 bytes at offset 60) = 0
 	copy(body[64:], securityBuffer)
@@ -224,19 +227,19 @@ func buildNegotiateResponseWithDialect(messageID uint64, serverGUID [16]byte, se
 	// NEGOTIATE response body (65 bytes + security buffer)
 	bodySize := 64 + len(securityBuffer)
 	body := make([]byte, bodySize)
-	binary.LittleEndian.PutUint16(body[0:2], 65)                          // StructureSize
+	binary.LittleEndian.PutUint16(body[0:2], 65)                             // StructureSize
 	binary.LittleEndian.PutUint16(body[2:4], SMB2_NEGOTIATE_SIGNING_ENABLED) // SecurityMode
-	binary.LittleEndian.PutUint16(body[4:6], dialect)                      // DialectRevision
+	binary.LittleEndian.PutUint16(body[4:6], dialect)                        // DialectRevision
 	// NegotiateContextCount (2 bytes) = 0
-	copy(body[8:24], serverGUID[:])                                        // ServerGuid
-	binary.LittleEndian.PutUint32(body[24:28], 0x7)                       // Capabilities (DFS|Leasing|LargeMTU)
-	binary.LittleEndian.PutUint32(body[28:32], 65536)                     // MaxTransactSize
-	binary.LittleEndian.PutUint32(body[32:36], 65536)                     // MaxReadSize
-	binary.LittleEndian.PutUint32(body[36:40], 65536)                     // MaxWriteSize
+	copy(body[8:24], serverGUID[:])                   // ServerGuid
+	binary.LittleEndian.PutUint32(body[24:28], 0x7)   // Capabilities (DFS|Leasing|LargeMTU)
+	binary.LittleEndian.PutUint32(body[28:32], 65536) // MaxTransactSize
+	binary.LittleEndian.PutUint32(body[32:36], 65536) // MaxReadSize
+	binary.LittleEndian.PutUint32(body[36:40], 65536) // MaxWriteSize
 	// SystemTime (8 bytes at offset 40) = 0
 	// ServerStartTime (8 bytes at offset 48) = 0
-	secBufOffset := uint16(64 + 64)                                        // Header(64) + body offset to SecurityBuffer
-	binary.LittleEndian.PutUint16(body[56:58], secBufOffset)              // SecurityBufferOffset
+	secBufOffset := uint16(64 + 64)                                         // Header(64) + body offset to SecurityBuffer
+	binary.LittleEndian.PutUint16(body[56:58], secBufOffset)                // SecurityBufferOffset
 	binary.LittleEndian.PutUint16(body[58:60], uint16(len(securityBuffer))) // SecurityBufferLength
 	// NegotiateContextOffset (4 bytes at offset 60) = 0
 	copy(body[64:], securityBuffer)
@@ -257,8 +260,8 @@ func buildSessionSetupResponse(messageID uint64, sessionID uint64, status uint32
 	body := make([]byte, bodySize)
 	binary.LittleEndian.PutUint16(body[0:2], 9) // StructureSize
 	// SessionFlags (2 bytes) = 0
-	secBufOffset := uint16(64 + 8) // Header(64) + body fixed part
-	binary.LittleEndian.PutUint16(body[4:6], secBufOffset) // SecurityBufferOffset
+	secBufOffset := uint16(64 + 8)                                        // Header(64) + body fixed part
+	binary.LittleEndian.PutUint16(body[4:6], secBufOffset)                // SecurityBufferOffset
 	binary.LittleEndian.PutUint16(body[6:8], uint16(len(securityBuffer))) // SecurityBufferLength
 	copy(body[8:], securityBuffer)
 
@@ -281,8 +284,8 @@ func buildSessionSetupRequest(messageID uint64, sessionID uint64, securityBuffer
 	body[3] = 0x00 // SecurityMode = 0 (no signing for relay)
 	// Capabilities (4 bytes at offset 4) = 0
 	// Channel (4 bytes at offset 8) = 0
-	secBufOffset := uint16(64 + 24) // Header(64) + fixed body
-	binary.LittleEndian.PutUint16(body[12:14], secBufOffset) // SecurityBufferOffset
+	secBufOffset := uint16(64 + 24)                                         // Header(64) + fixed body
+	binary.LittleEndian.PutUint16(body[12:14], secBufOffset)                // SecurityBufferOffset
 	binary.LittleEndian.PutUint16(body[14:16], uint16(len(securityBuffer))) // SecurityBufferLength
 	// PreviousSessionId (8 bytes at offset 16) = 0
 	copy(body[24:], securityBuffer)
@@ -305,8 +308,8 @@ func buildTreeConnectRequest(messageID uint64, sessionID uint64, treeID uint32, 
 	body := make([]byte, bodySize)
 	binary.LittleEndian.PutUint16(body[0:2], 9) // StructureSize
 	// Reserved (2 bytes) = 0
-	pathOffset := uint16(64 + 8) // Header(64) + fixed body
-	binary.LittleEndian.PutUint16(body[4:6], pathOffset) // PathOffset
+	pathOffset := uint16(64 + 8)                                     // Header(64) + fixed body
+	binary.LittleEndian.PutUint16(body[4:6], pathOffset)             // PathOffset
 	binary.LittleEndian.PutUint16(body[6:8], uint16(len(pathUTF16))) // PathLength
 	copy(body[8:], pathUTF16)
 
@@ -460,10 +463,10 @@ func buildIOCTLRequest(messageID uint64, sessionID uint64, treeID uint32, fileID
 	binary.LittleEndian.PutUint16(body[0:2], 57) // StructureSize
 	// Reserved (2 bytes at offset 2) = 0
 	binary.LittleEndian.PutUint32(body[4:8], FSCTL_PIPE_TRANSCEIVE) // CtlCode
-	copy(body[8:24], fileID[:]) // FileId
-	inputOffset := uint32(64 + 56) // Header + fixed body
-	binary.LittleEndian.PutUint32(body[24:28], inputOffset) // InputOffset
-	binary.LittleEndian.PutUint32(body[28:32], uint32(len(input))) // InputCount
+	copy(body[8:24], fileID[:])                                     // FileId
+	inputOffset := uint32(64 + 56)                                  // Header + fixed body
+	binary.LittleEndian.PutUint32(body[24:28], inputOffset)         // InputOffset
+	binary.LittleEndian.PutUint32(body[28:32], uint32(len(input)))  // InputCount
 	// MaxInputResponse (4 bytes at offset 32) = 0
 	// OutputOffset (4 bytes at offset 36) = 0 (no output in request)
 	// OutputCount (4 bytes at offset 40) = 0
@@ -494,9 +497,9 @@ func buildReadRequestAt(messageID uint64, sessionID uint64, treeID uint32, fileI
 	// Padding (1 byte at offset 2) = 0x50
 	body[2] = 0x50
 	// Flags (1 byte at offset 3) = 0
-	binary.LittleEndian.PutUint32(body[4:8], length) // Length
+	binary.LittleEndian.PutUint32(body[4:8], length)  // Length
 	binary.LittleEndian.PutUint64(body[8:16], offset) // Offset
-	copy(body[16:32], fileID[:]) // FileId
+	copy(body[16:32], fileID[:])                      // FileId
 	// MinimumCount (4 bytes at offset 32) = 0
 	// Channel (4 bytes at offset 36) = 0
 	// RemainingBytes (4 bytes at offset 40) = 0
@@ -518,9 +521,9 @@ func buildWriteRequest(messageID uint64, sessionID uint64, treeID uint32, fileID
 	// WRITE request body (49 bytes + data)
 	bodySize := 48 + len(data)
 	body := make([]byte, bodySize)
-	binary.LittleEndian.PutUint16(body[0:2], 49) // StructureSize
-	dataOffset := uint16(64 + 48) // Header + fixed body
-	binary.LittleEndian.PutUint16(body[2:4], dataOffset) // DataOffset
+	binary.LittleEndian.PutUint16(body[0:2], 49)                // StructureSize
+	dataOffset := uint16(64 + 48)                               // Header + fixed body
+	binary.LittleEndian.PutUint16(body[2:4], dataOffset)        // DataOffset
 	binary.LittleEndian.PutUint32(body[4:8], uint32(len(data))) // Length
 	// Offset (8 bytes at offset 8) = 0
 	copy(body[16:32], fileID[:]) // FileId

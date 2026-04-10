@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -217,8 +220,8 @@ type TreeConnect struct {
 // OpenFile represents an open file handle
 type OpenFile struct {
 	id         [16]byte
-	path       string   // Original path requested
-	realPath   string   // Actual file on disk
+	path       string // Original path requested
+	realPath   string // Actual file on disk
 	isDir      bool
 	file       *os.File
 	enumerated bool
@@ -554,30 +557,30 @@ func (s *Server) buildNegotiateResponse(messageID uint64) []byte {
 
 	// SMB2 header
 	copy(resp[0:4], []byte{0xFE, 'S', 'M', 'B'})
-	binary.LittleEndian.PutUint16(resp[4:6], 64)                        // StructureSize
-	binary.LittleEndian.PutUint32(resp[8:12], STATUS_SUCCESS)           // Status
-	binary.LittleEndian.PutUint16(resp[12:14], SMB2_NEGOTIATE)          // Command
-	binary.LittleEndian.PutUint16(resp[14:16], 1)                       // CreditResponse
+	binary.LittleEndian.PutUint16(resp[4:6], 64)               // StructureSize
+	binary.LittleEndian.PutUint32(resp[8:12], STATUS_SUCCESS)  // Status
+	binary.LittleEndian.PutUint16(resp[12:14], SMB2_NEGOTIATE) // Command
+	binary.LittleEndian.PutUint16(resp[14:16], 1)              // CreditResponse
 	binary.LittleEndian.PutUint32(resp[16:20], SMB2_FLAGS_SERVER_TO_REDIR)
 	binary.LittleEndian.PutUint64(resp[24:32], messageID)
 
 	// Negotiate response body
 	body := resp[64:]
-	binary.LittleEndian.PutUint16(body[0:2], 65)                                    // StructureSize
-	binary.LittleEndian.PutUint16(body[2:4], SMB2_NEGOTIATE_SIGNING_ENABLED)        // SecurityMode
-	binary.LittleEndian.PutUint16(body[4:6], SMB2_DIALECT_202)                      // DialectRevision = 0x0202
-	binary.LittleEndian.PutUint16(body[6:8], 0)                                     // Reserved
-	copy(body[8:24], s.serverGUID[:])                                               // ServerGuid
-	binary.LittleEndian.PutUint32(body[24:28], 0)                                   // Capabilities (none)
-	binary.LittleEndian.PutUint32(body[28:32], 65536)                               // MaxTransactSize
-	binary.LittleEndian.PutUint32(body[32:36], 65536)                               // MaxReadSize
-	binary.LittleEndian.PutUint32(body[36:40], 65536)                               // MaxWriteSize
+	binary.LittleEndian.PutUint16(body[0:2], 65)                             // StructureSize
+	binary.LittleEndian.PutUint16(body[2:4], SMB2_NEGOTIATE_SIGNING_ENABLED) // SecurityMode
+	binary.LittleEndian.PutUint16(body[4:6], SMB2_DIALECT_202)               // DialectRevision = 0x0202
+	binary.LittleEndian.PutUint16(body[6:8], 0)                              // Reserved
+	copy(body[8:24], s.serverGUID[:])                                        // ServerGuid
+	binary.LittleEndian.PutUint32(body[24:28], 0)                            // Capabilities (none)
+	binary.LittleEndian.PutUint32(body[28:32], 65536)                        // MaxTransactSize
+	binary.LittleEndian.PutUint32(body[32:36], 65536)                        // MaxReadSize
+	binary.LittleEndian.PutUint32(body[36:40], 65536)                        // MaxWriteSize
 	now := uint64(time.Now().UnixNano()/100 + 116444736000000000)
-	binary.LittleEndian.PutUint64(body[40:48], now)                                 // SystemTime
-	binary.LittleEndian.PutUint64(body[48:56], now)                                 // ServerStartTime
-	binary.LittleEndian.PutUint16(body[56:58], uint16(64+64))                       // SecurityBufferOffset (header + fixed body)
-	binary.LittleEndian.PutUint16(body[58:60], uint16(secBlobLen))                  // SecurityBufferLength
-	copy(body[64:], spnegoNegotiateToken)                                           // SecurityBuffer
+	binary.LittleEndian.PutUint64(body[40:48], now)                // SystemTime
+	binary.LittleEndian.PutUint64(body[48:56], now)                // ServerStartTime
+	binary.LittleEndian.PutUint16(body[56:58], uint16(64+64))      // SecurityBufferOffset (header + fixed body)
+	binary.LittleEndian.PutUint16(body[58:60], uint16(secBlobLen)) // SecurityBufferLength
+	copy(body[64:], spnegoNegotiateToken)                          // SecurityBuffer
 
 	return resp
 }
@@ -763,7 +766,7 @@ func (s *Server) handleNTLMAuthenticate(session *Session, ntlmMsg []byte, messag
 	session.username = user
 	session.domain = domain
 
-	// Print captured hash (karma captures hashes!)
+	// Print captured NTLM response for offline cracking.
 	s.printCapturedHash(user, domain, session.challenge, lmResponse, ntResponse)
 
 	// Authentication always successful in karma mode
@@ -923,7 +926,7 @@ func (s *Server) handleTreeConnect(session *Session, pkt []byte, messageID uint6
 		body[2] = 0x02                                   // ShareType = PIPE
 		binary.LittleEndian.PutUint32(body[4:8], 0x0030) // ShareFlags
 	} else {
-		body[2] = 0x01                          // ShareType = DISK
+		body[2] = 0x01                              // ShareType = DISK
 		binary.LittleEndian.PutUint32(body[4:8], 0) // ShareFlags
 	}
 	body[3] = 0                                          // Reserved
@@ -1186,12 +1189,12 @@ func (s *Server) handleRead(session *Session, pkt []byte, messageID uint64, tree
 	binary.LittleEndian.PutUint64(resp[40:48], session.id+1)
 
 	body := resp[64:]
-	binary.LittleEndian.PutUint16(body[0:2], 17)          // StructureSize
-	body[2] = 0x50                                        // DataOffset (64 header + 16 body = 80 = 0x50)
-	body[3] = 0                                           // Reserved
-	binary.LittleEndian.PutUint32(body[4:8], uint32(n))   // DataLength
-	binary.LittleEndian.PutUint32(body[8:12], 0)          // DataRemaining (0 = no more data)
-	binary.LittleEndian.PutUint32(body[12:16], 0)         // Reserved2
+	binary.LittleEndian.PutUint16(body[0:2], 17)        // StructureSize
+	body[2] = 0x50                                      // DataOffset (64 header + 16 body = 80 = 0x50)
+	body[3] = 0                                         // Reserved
+	binary.LittleEndian.PutUint32(body[4:8], uint32(n)) // DataLength
+	binary.LittleEndian.PutUint32(body[8:12], 0)        // DataRemaining (0 = no more data)
+	binary.LittleEndian.PutUint32(body[12:16], 0)       // Reserved2
 	copy(body[16:], data)
 
 	if s.debug && n > 0 {
@@ -1296,9 +1299,9 @@ func (s *Server) handleQueryDirectory(session *Session, pkt []byte, messageID ui
 	binary.LittleEndian.PutUint64(resp[40:48], session.id+1)
 
 	body := resp[64:]
-	binary.LittleEndian.PutUint16(body[0:2], 9)                      // StructureSize
-	binary.LittleEndian.PutUint16(body[2:4], 0x48)                   // OutputBufferOffset
-	binary.LittleEndian.PutUint32(body[4:8], uint32(len(entry)))     // OutputBufferLength
+	binary.LittleEndian.PutUint16(body[0:2], 9)                  // StructureSize
+	binary.LittleEndian.PutUint16(body[2:4], 0x48)               // OutputBufferOffset
+	binary.LittleEndian.PutUint32(body[4:8], uint32(len(entry))) // OutputBufferLength
 	copy(body[8:], entry)
 
 	return resp
@@ -1392,14 +1395,14 @@ func (s *Server) buildDirectoryEntry(name string, info os.FileInfo, infoClass by
 // writeCommonDirFields writes the common fields shared by all directory info classes
 // (everything up to and including FileNameLength at offset 60-63)
 func (s *Server) writeCommonDirFields(entry []byte, ft uint64, size int64, attrs uint32, nameBytes []byte) {
-	binary.LittleEndian.PutUint64(entry[8:16], ft)                        // CreationTime
-	binary.LittleEndian.PutUint64(entry[16:24], ft)                       // LastAccessTime
-	binary.LittleEndian.PutUint64(entry[24:32], ft)                       // LastWriteTime
-	binary.LittleEndian.PutUint64(entry[32:40], ft)                       // ChangeTime
-	binary.LittleEndian.PutUint64(entry[40:48], uint64(size))             // EndOfFile
-	binary.LittleEndian.PutUint64(entry[48:56], uint64(size))             // AllocationSize
-	binary.LittleEndian.PutUint32(entry[56:60], attrs)                    // FileAttributes
-	binary.LittleEndian.PutUint32(entry[60:64], uint32(len(nameBytes)))   // FileNameLength
+	binary.LittleEndian.PutUint64(entry[8:16], ft)                      // CreationTime
+	binary.LittleEndian.PutUint64(entry[16:24], ft)                     // LastAccessTime
+	binary.LittleEndian.PutUint64(entry[24:32], ft)                     // LastWriteTime
+	binary.LittleEndian.PutUint64(entry[32:40], ft)                     // ChangeTime
+	binary.LittleEndian.PutUint64(entry[40:48], uint64(size))           // EndOfFile
+	binary.LittleEndian.PutUint64(entry[48:56], uint64(size))           // AllocationSize
+	binary.LittleEndian.PutUint32(entry[56:60], attrs)                  // FileAttributes
+	binary.LittleEndian.PutUint32(entry[60:64], uint32(len(nameBytes))) // FileNameLength
 }
 
 func (s *Server) handleQueryInfo(session *Session, pkt []byte, messageID uint64, treeID uint32) []byte {
@@ -1590,8 +1593,8 @@ func (s *Server) buildNamedPipeCreateResponse(session *Session, messageID uint64
 	// Create Response
 	body := resp[64:]
 	binary.LittleEndian.PutUint16(body[0:2], 89) // StructureSize
-	body[2] = 0x00                                // OplockLevel = None
-	body[3] = 0x00                                // Flags
+	body[2] = 0x00                               // OplockLevel = None
+	body[3] = 0x00                               // Flags
 
 	// File times
 	ft := fileTimeFromTime(time.Now())

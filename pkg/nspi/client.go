@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package nspi
 
 import (
@@ -25,7 +28,7 @@ type Client struct {
 	CallID    uint32
 
 	// Address book hierarchy (map for lookup, slice for insertion order)
-	HTable     map[int32]*AddressBookEntry
+	HTable      map[int32]*AddressBookEntry
 	HTableOrder []int32
 
 	// Cached properties list
@@ -765,11 +768,10 @@ func (c *Client) ResolveNamesW(names []string, propTags []PropertyTag) (*Propert
 		return nil, fmt.Errorf("NspiResolveNamesW failed: 0x%08x", retVal)
 	}
 
-	// Response format: [pStat(36)][ppMIds][ppRows][ReturnValue(4)]
-	// pStat is omitted in ResolveNamesW response; it returns:
-	// [codePage DWORD][ppMIds][ppRows][ReturnValue]
-	// Actually the response format varies. Let's find ppRows by scanning for the
-	// PropertyRowSet pointer.
+	// Response format varies between server versions:
+	//   [pStat(36)][ppMIds][ppRows][ReturnValue(4)], or
+	//   [codePage DWORD][ppMIds][ppRows][ReturnValue] for ResolveNamesW.
+	// We locate ppRows by scanning for the PropertyRowSet pointer.
 
 	// Response format: ppMIds(PropertyTagArray_r**) + ppRows(PropertyRowSet_r**) + ReturnValue(4)
 	//

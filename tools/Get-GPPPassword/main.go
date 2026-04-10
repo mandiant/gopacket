@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -235,15 +238,15 @@ func parseXMLContent(filename, content string) []GPPResult {
 
 // XML structures for parsing
 type ScheduledTasksXML struct {
-	XMLName xml.Name            `xml:"ScheduledTasks"`
-	Tasks   []ScheduledTaskXML  `xml:",any"`
+	XMLName xml.Name           `xml:"ScheduledTasks"`
+	Tasks   []ScheduledTaskXML `xml:",any"`
 }
 
 type ScheduledTaskXML struct {
-	XMLName    xml.Name           `xml:""`
-	Name       string             `xml:"name,attr"`
-	Changed    string             `xml:"changed,attr"`
-	Properties TaskPropertiesXML  `xml:"Properties"`
+	XMLName    xml.Name          `xml:""`
+	Name       string            `xml:"name,attr"`
+	Changed    string            `xml:"changed,attr"`
+	Properties TaskPropertiesXML `xml:"Properties"`
 }
 
 type TaskPropertiesXML struct {
@@ -292,13 +295,13 @@ type GroupsXML struct {
 }
 
 type UserXML struct {
-	Changed    string             `xml:"changed,attr"`
-	Properties UserPropertiesXML  `xml:"Properties"`
+	Changed    string            `xml:"changed,attr"`
+	Properties UserPropertiesXML `xml:"Properties"`
 }
 
 type GroupXML struct {
-	Changed    string             `xml:"changed,attr"`
-	Properties UserPropertiesXML  `xml:"Properties"`
+	Changed    string            `xml:"changed,attr"`
+	Properties UserPropertiesXML `xml:"Properties"`
 }
 
 type UserPropertiesXML struct {
@@ -367,9 +370,9 @@ type ServicesXML struct {
 }
 
 type ServiceXML struct {
-	Changed    string                `xml:"changed,attr"`
-	Name       string                `xml:"name,attr"`
-	Properties ServicePropertiesXML  `xml:"Properties"`
+	Changed    string               `xml:"changed,attr"`
+	Name       string               `xml:"name,attr"`
+	Properties ServicePropertiesXML `xml:"Properties"`
 }
 
 type ServicePropertiesXML struct {

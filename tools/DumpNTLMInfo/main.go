@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -22,9 +25,9 @@ import (
 
 // SMB Constants
 const (
-	SMB1_HEADER_MAGIC    = "\xffSMB"
-	SMB2_HEADER_MAGIC    = "\xfeSMB"
-	SMB_COM_NEGOTIATE    = 0x72
+	SMB1_HEADER_MAGIC     = "\xffSMB"
+	SMB2_HEADER_MAGIC     = "\xfeSMB"
+	SMB_COM_NEGOTIATE     = 0x72
 	SMB_COM_SESSION_SETUP = 0x73
 
 	// SMB2 Commands
@@ -391,14 +394,14 @@ func (d *DumpNTLM) buildSMB2Negotiate() []byte {
 
 	header := make([]byte, 64)
 	copy(header[0:4], SMB2_HEADER_MAGIC)
-	binary.LittleEndian.PutUint16(header[4:6], 64)         // StructureSize
+	binary.LittleEndian.PutUint16(header[4:6], 64) // StructureSize
 	binary.LittleEndian.PutUint16(header[12:14], SMB2_NEGOTIATE)
-	binary.LittleEndian.PutUint16(header[14:16], 1)        // Credits
+	binary.LittleEndian.PutUint16(header[14:16], 1) // Credits
 
 	// Negotiate Request structure (36 bytes + dialects)
 	nego := make([]byte, 36+len(dialects)*2)
-	binary.LittleEndian.PutUint16(nego[0:2], 36)           // StructureSize
-	binary.LittleEndian.PutUint16(nego[2:4], uint16(len(dialects))) // DialectCount
+	binary.LittleEndian.PutUint16(nego[0:2], 36)                             // StructureSize
+	binary.LittleEndian.PutUint16(nego[2:4], uint16(len(dialects)))          // DialectCount
 	binary.LittleEndian.PutUint16(nego[4:6], SMB2_NEGOTIATE_SIGNING_ENABLED) // SecurityMode
 	binary.LittleEndian.PutUint32(nego[8:12], SMB2_GLOBAL_CAP_ENCRYPTION)    // Capabilities
 
@@ -502,11 +505,11 @@ func (d *DumpNTLM) buildSMB2SessionSetup(dialect uint16) []byte {
 	// Session Setup Request (24 bytes fixed structure)
 	// StructureSize is 25 which means 24 fixed + 1 byte buffer (per SMB2 spec)
 	setup := make([]byte, 24)
-	binary.LittleEndian.PutUint16(setup[0:2], 25)   // StructureSize (24 fixed + 1 buffer)
-	setup[2] = 0                                     // Flags
-	setup[3] = 0x01                                  // SecurityMode = SIGNING_ENABLED
-	binary.LittleEndian.PutUint32(setup[4:8], 0)    // Capabilities
-	binary.LittleEndian.PutUint32(setup[8:12], 0)   // Channel
+	binary.LittleEndian.PutUint16(setup[0:2], 25)      // StructureSize (24 fixed + 1 buffer)
+	setup[2] = 0                                       // Flags
+	setup[3] = 0x01                                    // SecurityMode = SIGNING_ENABLED
+	binary.LittleEndian.PutUint32(setup[4:8], 0)       // Capabilities
+	binary.LittleEndian.PutUint32(setup[8:12], 0)      // Channel
 	binary.LittleEndian.PutUint16(setup[12:14], 64+24) // SecurityBufferOffset = header + setup
 	binary.LittleEndian.PutUint16(setup[14:16], uint16(len(spnego)))
 	binary.LittleEndian.PutUint64(setup[16:24], 0) // PreviousSessionId
@@ -529,13 +532,13 @@ func (d *DumpNTLM) buildNTLMType1() []byte {
 	msg = append(msg, flagBytes...)
 
 	// Domain (empty)
-	msg = append(msg, 0x00, 0x00) // DomainLen
-	msg = append(msg, 0x00, 0x00) // DomainMaxLen
+	msg = append(msg, 0x00, 0x00)             // DomainLen
+	msg = append(msg, 0x00, 0x00)             // DomainMaxLen
 	msg = append(msg, 0x00, 0x00, 0x00, 0x00) // DomainOffset
 
 	// Workstation (empty)
-	msg = append(msg, 0x00, 0x00) // WorkstationLen
-	msg = append(msg, 0x00, 0x00) // WorkstationMaxLen
+	msg = append(msg, 0x00, 0x00)             // WorkstationLen
+	msg = append(msg, 0x00, 0x00)             // WorkstationMaxLen
 	msg = append(msg, 0x00, 0x00, 0x00, 0x00) // WorkstationOffset
 
 	// Version
@@ -643,11 +646,11 @@ func (d *DumpNTLM) buildNullSessionAuth(dialect uint16, sessionID uint64, ntlmTy
 
 	// Session Setup Request (24 bytes fixed structure)
 	setup := make([]byte, 24)
-	binary.LittleEndian.PutUint16(setup[0:2], 25)   // StructureSize
-	setup[2] = 0                                     // Flags
-	setup[3] = 0x01                                  // SecurityMode = SIGNING_ENABLED
-	binary.LittleEndian.PutUint32(setup[4:8], 0)    // Capabilities
-	binary.LittleEndian.PutUint32(setup[8:12], 0)   // Channel
+	binary.LittleEndian.PutUint16(setup[0:2], 25)      // StructureSize
+	setup[2] = 0                                       // Flags
+	setup[3] = 0x01                                    // SecurityMode = SIGNING_ENABLED
+	binary.LittleEndian.PutUint32(setup[4:8], 0)       // Capabilities
+	binary.LittleEndian.PutUint32(setup[8:12], 0)      // Channel
 	binary.LittleEndian.PutUint16(setup[12:14], 64+24) // SecurityBufferOffset
 	binary.LittleEndian.PutUint16(setup[14:16], uint16(len(spnego)))
 	binary.LittleEndian.PutUint64(setup[16:24], 0) // PreviousSessionId
@@ -720,29 +723,29 @@ func (d *DumpNTLM) buildNTLMType3(ntlmType2 []byte) []byte {
 
 	// All fields are empty (null session), so lengths are 0, offsets point to base
 	// LmChallengeResponse (offset 12)
-	binary.LittleEndian.PutUint16(msg[12:14], 0)              // Len
-	binary.LittleEndian.PutUint16(msg[14:16], 0)              // MaxLen
-	binary.LittleEndian.PutUint32(msg[16:20], payloadOffset)  // Offset
+	binary.LittleEndian.PutUint16(msg[12:14], 0)             // Len
+	binary.LittleEndian.PutUint16(msg[14:16], 0)             // MaxLen
+	binary.LittleEndian.PutUint32(msg[16:20], payloadOffset) // Offset
 
 	// NtChallengeResponse (offset 20)
-	binary.LittleEndian.PutUint16(msg[20:22], 0)              // Len
-	binary.LittleEndian.PutUint16(msg[22:24], 0)              // MaxLen
-	binary.LittleEndian.PutUint32(msg[24:28], payloadOffset)  // Offset
+	binary.LittleEndian.PutUint16(msg[20:22], 0)             // Len
+	binary.LittleEndian.PutUint16(msg[22:24], 0)             // MaxLen
+	binary.LittleEndian.PutUint32(msg[24:28], payloadOffset) // Offset
 
 	// DomainName (offset 28)
-	binary.LittleEndian.PutUint16(msg[28:30], 0)              // Len
-	binary.LittleEndian.PutUint16(msg[30:32], 0)              // MaxLen
-	binary.LittleEndian.PutUint32(msg[32:36], payloadOffset)  // Offset
+	binary.LittleEndian.PutUint16(msg[28:30], 0)             // Len
+	binary.LittleEndian.PutUint16(msg[30:32], 0)             // MaxLen
+	binary.LittleEndian.PutUint32(msg[32:36], payloadOffset) // Offset
 
 	// UserName (offset 36)
-	binary.LittleEndian.PutUint16(msg[36:38], 0)              // Len
-	binary.LittleEndian.PutUint16(msg[38:40], 0)              // MaxLen
-	binary.LittleEndian.PutUint32(msg[40:44], payloadOffset)  // Offset
+	binary.LittleEndian.PutUint16(msg[36:38], 0)             // Len
+	binary.LittleEndian.PutUint16(msg[38:40], 0)             // MaxLen
+	binary.LittleEndian.PutUint32(msg[40:44], payloadOffset) // Offset
 
 	// Workstation (offset 44)
-	binary.LittleEndian.PutUint16(msg[44:46], 0)              // Len
-	binary.LittleEndian.PutUint16(msg[46:48], 0)              // MaxLen
-	binary.LittleEndian.PutUint32(msg[48:52], payloadOffset)  // Offset
+	binary.LittleEndian.PutUint16(msg[44:46], 0)             // Len
+	binary.LittleEndian.PutUint16(msg[46:48], 0)             // MaxLen
+	binary.LittleEndian.PutUint32(msg[48:52], payloadOffset) // Offset
 
 	// EncryptedRandomSessionKey (offset 52)
 	if hasKeyExch {
@@ -751,8 +754,8 @@ func (d *DumpNTLM) buildNTLMType3(ntlmType2 []byte) []byte {
 		binary.LittleEndian.PutUint32(msg[56:60], baseOffset) // Offset (right after fixed header)
 		copy(msg[64:80], encryptedSessionKey)
 	} else {
-		binary.LittleEndian.PutUint16(msg[52:54], 0)          // Len
-		binary.LittleEndian.PutUint16(msg[54:56], 0)          // MaxLen
+		binary.LittleEndian.PutUint16(msg[52:54], 0)             // Len
+		binary.LittleEndian.PutUint16(msg[54:56], 0)             // MaxLen
 		binary.LittleEndian.PutUint32(msg[56:60], payloadOffset) // Offset
 	}
 
@@ -964,9 +967,9 @@ func (d *DumpNTLM) buildRPCBind() []byte {
 
 	// Context item (44 bytes)
 	ctxItem := make([]byte, 44)
-	binary.LittleEndian.PutUint16(ctxItem[0:2], 0)  // ContextID
-	ctxItem[2] = 1                                   // NumTransItems
-	ctxItem[3] = 0                                   // Reserved
+	binary.LittleEndian.PutUint16(ctxItem[0:2], 0) // ContextID
+	ctxItem[2] = 1                                 // NumTransItems
+	ctxItem[3] = 0                                 // Reserved
 	copy(ctxItem[4:20], epmUUID)
 	copy(ctxItem[20:24], epmVersion)
 	copy(ctxItem[24:40], ndrUUID)
@@ -974,21 +977,21 @@ func (d *DumpNTLM) buildRPCBind() []byte {
 
 	// Bind PDU body (12 bytes fixed + 44 bytes context item = 56 bytes)
 	bind := make([]byte, 12)
-	binary.LittleEndian.PutUint16(bind[0:2], 4280)  // MaxXmitFrag
-	binary.LittleEndian.PutUint16(bind[2:4], 4280)  // MaxRecvFrag
-	binary.LittleEndian.PutUint32(bind[4:8], 0)     // AssocGroup
-	bind[8] = 1  // NumCtxItems
-	bind[9] = 0  // Reserved
-	bind[10] = 0 // Reserved
-	bind[11] = 0 // Reserved (align to 4 bytes)
+	binary.LittleEndian.PutUint16(bind[0:2], 4280) // MaxXmitFrag
+	binary.LittleEndian.PutUint16(bind[2:4], 4280) // MaxRecvFrag
+	binary.LittleEndian.PutUint32(bind[4:8], 0)    // AssocGroup
+	bind[8] = 1                                    // NumCtxItems
+	bind[9] = 0                                    // Reserved
+	bind[10] = 0                                   // Reserved
+	bind[11] = 0                                   // Reserved (align to 4 bytes)
 	bind = append(bind, ctxItem...)
 
 	// SEC_TRAILER (8 bytes)
 	secTrailer := make([]byte, 8)
-	secTrailer[0] = 0x0a // auth_type = NTLMSSP
-	secTrailer[1] = 0x05 // auth_level = PKT_INTEGRITY
-	secTrailer[2] = 0    // auth_pad_length
-	secTrailer[3] = 0    // reserved
+	secTrailer[0] = 0x0a                                  // auth_type = NTLMSSP
+	secTrailer[1] = 0x05                                  // auth_level = PKT_INTEGRITY
+	secTrailer[2] = 0                                     // auth_pad_length
+	secTrailer[3] = 0                                     // reserved
 	binary.LittleEndian.PutUint32(secTrailer[4:8], 79231) // auth_context_id
 
 	// Total: 16 (header) + 56 (bind body) + 8 (sec_trailer) + len(ntlmType1)
@@ -997,10 +1000,10 @@ func (d *DumpNTLM) buildRPCBind() []byte {
 
 	// RPC Header (16 bytes)
 	header := make([]byte, 16)
-	header[0] = 5                                            // Version
-	header[1] = 0                                            // Minor version
-	header[2] = DCERPC_BIND                                  // Packet type
-	header[3] = 0x03                                         // Flags (first + last)
+	header[0] = 5           // Version
+	header[1] = 0           // Minor version
+	header[2] = DCERPC_BIND // Packet type
+	header[3] = 0x03        // Flags (first + last)
 	// Data representation: little-endian (0x10), IEEE float (0x00), reserved (0x0000)
 	header[4] = 0x10
 	header[5] = 0x00
@@ -1008,7 +1011,7 @@ func (d *DumpNTLM) buildRPCBind() []byte {
 	header[7] = 0x00
 	binary.LittleEndian.PutUint16(header[8:10], uint16(fragLen))
 	binary.LittleEndian.PutUint16(header[10:12], uint16(authLen))
-	binary.LittleEndian.PutUint32(header[12:16], 1)          // Call ID
+	binary.LittleEndian.PutUint32(header[12:16], 1) // Call ID
 
 	packet := append(header, bind...)
 	packet = append(packet, secTrailer...)
@@ -1025,7 +1028,7 @@ func (d *DumpNTLM) buildNTLMType1ForRPC() []byte {
 
 	msg := make([]byte, 32)
 	copy(msg[0:8], []byte("NTLMSSP\x00"))
-	binary.LittleEndian.PutUint32(msg[8:12], 1)     // Type 1
+	binary.LittleEndian.PutUint32(msg[8:12], 1) // Type 1
 	binary.LittleEndian.PutUint32(msg[12:16], flags)
 
 	// Domain (empty)

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // Package dpaping implements DPAPI-NG (Data Protection API - Next Generation) decryption
 // for LAPS v2 encrypted passwords.
 package dpaping
@@ -383,7 +386,7 @@ func CreateSecurityDescriptor(sid string) []byte {
 	everyoneSid := parseSidToBytes("S-1-1-0")
 
 	// Build ACEs
-	ace1 := buildAce(0x00, 0x03, targetSid)  // ACCESS_ALLOWED_ACE, mask=3
+	ace1 := buildAce(0x00, 0x03, targetSid)   // ACCESS_ALLOWED_ACE, mask=3
 	ace2 := buildAce(0x00, 0x02, everyoneSid) // ACCESS_ALLOWED_ACE, mask=2
 
 	// Build ACL
@@ -392,8 +395,8 @@ func CreateSecurityDescriptor(sid string) []byte {
 	acl[0] = 0x02 // AclRevision
 	acl[1] = 0x00 // Sbz1
 	binary.LittleEndian.PutUint16(acl[2:4], uint16(aclSize))
-	binary.LittleEndian.PutUint16(acl[4:6], 2)  // AceCount
-	binary.LittleEndian.PutUint16(acl[6:8], 0)  // Sbz2
+	binary.LittleEndian.PutUint16(acl[4:6], 2) // AceCount
+	binary.LittleEndian.PutUint16(acl[6:8], 0) // Sbz2
 	copy(acl[8:], ace1)
 	copy(acl[8+len(ace1):], ace2)
 
@@ -424,7 +427,7 @@ func CreateSecurityDescriptor(sid string) []byte {
 func buildAce(aceType, mask byte, sid []byte) []byte {
 	aceSize := 4 + 4 + len(sid)
 	ace := make([]byte, aceSize)
-	ace[0] = aceType                                        // AceType
+	ace[0] = aceType                                         // AceType
 	ace[1] = 0x00                                            // AceFlags
 	binary.LittleEndian.PutUint16(ace[2:4], uint16(aceSize)) // AceSize
 	binary.LittleEndian.PutUint32(ace[4:8], uint32(mask))    // Mask

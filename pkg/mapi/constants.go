@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // Package mapi provides MAPI (Messaging Application Programming Interface)
 // constants and helpers for working with Exchange address book properties.
 // This is a modular library that can be used by multiple tools.
@@ -283,38 +286,38 @@ const (
 
 // Property types
 const (
-	PT_UNSPECIFIED    = 0x0000
-	PT_NULL           = 0x0001
-	PT_I2             = 0x0002 // 16-bit signed int
-	PT_LONG           = 0x0003 // 32-bit signed int
-	PT_R4             = 0x0004 // 32-bit float
-	PT_DOUBLE         = 0x0005 // 64-bit float
-	PT_CURRENCY       = 0x0006
-	PT_APPTIME        = 0x0007
-	PT_ERROR          = 0x000A
-	PT_BOOLEAN        = 0x000B
-	PT_OBJECT         = 0x000D // Embedded object
-	PT_I8             = 0x0014 // 64-bit signed int
-	PT_STRING8        = 0x001E // ANSI string
-	PT_UNICODE        = 0x001F // Unicode string
-	PT_SYSTIME        = 0x0040 // FILETIME
-	PT_CLSID          = 0x0048
-	PT_SVREID         = 0x00FB
-	PT_SRESTRICTION   = 0x00FD
-	PT_ACTIONS        = 0x00FE
-	PT_BINARY         = 0x0102
-	PT_MV_I2          = 0x1002
-	PT_MV_LONG        = 0x1003
-	PT_MV_R4          = 0x1004
-	PT_MV_DOUBLE      = 0x1005
-	PT_MV_CURRENCY    = 0x1006
-	PT_MV_APPTIME     = 0x1007
-	PT_MV_I8          = 0x1014
-	PT_MV_STRING8     = 0x101E
-	PT_MV_UNICODE     = 0x101F
-	PT_MV_SYSTIME     = 0x1040
-	PT_MV_CLSID       = 0x1048
-	PT_MV_BINARY      = 0x1102
+	PT_UNSPECIFIED  = 0x0000
+	PT_NULL         = 0x0001
+	PT_I2           = 0x0002 // 16-bit signed int
+	PT_LONG         = 0x0003 // 32-bit signed int
+	PT_R4           = 0x0004 // 32-bit float
+	PT_DOUBLE       = 0x0005 // 64-bit float
+	PT_CURRENCY     = 0x0006
+	PT_APPTIME      = 0x0007
+	PT_ERROR        = 0x000A
+	PT_BOOLEAN      = 0x000B
+	PT_OBJECT       = 0x000D // Embedded object
+	PT_I8           = 0x0014 // 64-bit signed int
+	PT_STRING8      = 0x001E // ANSI string
+	PT_UNICODE      = 0x001F // Unicode string
+	PT_SYSTIME      = 0x0040 // FILETIME
+	PT_CLSID        = 0x0048
+	PT_SVREID       = 0x00FB
+	PT_SRESTRICTION = 0x00FD
+	PT_ACTIONS      = 0x00FE
+	PT_BINARY       = 0x0102
+	PT_MV_I2        = 0x1002
+	PT_MV_LONG      = 0x1003
+	PT_MV_R4        = 0x1004
+	PT_MV_DOUBLE    = 0x1005
+	PT_MV_CURRENCY  = 0x1006
+	PT_MV_APPTIME   = 0x1007
+	PT_MV_I8        = 0x1014
+	PT_MV_STRING8   = 0x101E
+	PT_MV_UNICODE   = 0x101F
+	PT_MV_SYSTIME   = 0x1040
+	PT_MV_CLSID     = 0x1048
+	PT_MV_BINARY    = 0x1102
 )
 
 // PropertyInfo contains metadata for a MAPI property

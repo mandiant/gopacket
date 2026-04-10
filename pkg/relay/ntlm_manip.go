@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -83,7 +86,7 @@ func removeMIC(ntlmMsg []byte) []byte {
 	// Build new message: fixed header (64 bytes) + payload (everything after stripped region)
 	payloadStart := 64 + stripBytes
 	msg := make([]byte, 0, len(ntlmMsg)-int(stripBytes))
-	msg = append(msg, ntlmMsg[:64]...)          // Fixed header with flags
+	msg = append(msg, ntlmMsg[:64]...)           // Fixed header with flags
 	msg = append(msg, ntlmMsg[payloadStart:]...) // Payload shifted left
 
 	// Clear flags: VERSION, SIGN, ALWAYS_SIGN, KEY_EXCH

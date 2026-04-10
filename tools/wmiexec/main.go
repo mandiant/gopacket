@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -55,7 +58,7 @@ var (
 	shellType     = flag.String("shell-type", "cmd", "Choose shell type: cmd or powershell")
 	codec         = flag.String("codec", "", "Sets encoding used (codec) from the target's output (default \"utf-8\")")
 	comVersion    = flag.String("com-version", "", "DCOM version, format is MAJOR_VERSION:MINOR_VERSION (e.g. 5.7)")
-	timeout   = flag.Int("timeout", 30, "Timeout in seconds waiting for command output")
+	timeout       = flag.Int("timeout", 30, "Timeout in seconds waiting for command output")
 )
 
 func main() {

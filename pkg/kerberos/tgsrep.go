@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package kerberos
 
 import (
@@ -19,9 +22,9 @@ type TGSResult struct {
 	SPN         string
 	Hash        string
 	EType       int32
-	TicketBytes []byte               // Raw marshaled ticket (for ccache saving)
-	SessionKey  types.EncryptionKey  // Session key (for ccache saving)
-	Realm       string               // Realm (for ccache saving)
+	TicketBytes []byte              // Raw marshaled ticket (for ccache saving)
+	SessionKey  types.EncryptionKey // Session key (for ccache saving)
+	Realm       string              // Realm (for ccache saving)
 }
 
 // TGSOptions configures TGS request authentication

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package session
 
 import (
@@ -13,18 +16,18 @@ func EnsurePassword(creds *Credentials) error {
 	if creds.Password != "" || creds.Hash != "" {
 		return nil
 	}
-	
+
 	if creds.UseKerberos && os.Getenv("KRB5CCNAME") != "" {
 		return nil
 	}
-	
+
 	fmt.Printf("Password: ")
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	fmt.Println() // Newline
 	if err != nil {
 		return fmt.Errorf("failed to read password: %v", err)
 	}
-	
+
 	creds.Password = string(bytePassword)
 	return nil
 }

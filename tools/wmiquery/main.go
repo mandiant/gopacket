@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -46,9 +49,9 @@ import (
 
 // WBEM flags
 const (
-	WBEM_FLAG_RETURN_IMMEDIATELY      = 0x00000010
-	WBEM_FLAG_FORWARD_ONLY            = 0x00000020
-	WBEM_FLAG_USE_AMENDED_QUALIFIERS  = 0x00020000
+	WBEM_FLAG_RETURN_IMMEDIATELY     = 0x00000010
+	WBEM_FLAG_FORWARD_ONLY           = 0x00000020
+	WBEM_FLAG_USE_AMENDED_QUALIFIERS = 0x00020000
 )
 
 var (

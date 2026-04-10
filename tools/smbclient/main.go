@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -7,8 +10,8 @@ import (
 	"io"
 	"log"
 	"os"
-	"strings"
 	"path/filepath"
+	"strings"
 
 	"github.com/chzyer/readline"
 	"gopacket/pkg/dcerpc"
@@ -31,7 +34,7 @@ func main() {
 	}
 
 	opts.ApplyToSession(&target, &creds)
-	
+
 	if !opts.NoPass {
 		if err := session.EnsurePassword(&creds); err != nil {
 			log.Fatal(err)
@@ -123,100 +126,220 @@ func shell(client *smb.Client, hostname string, inputFile string) {
 	for {
 		var line string
 		if scanner != nil {
-			if !scanner.Scan() { break }
+			if !scanner.Scan() {
+				break
+			}
 			line = scanner.Text()
 			fmt.Printf("# %s\n", line)
 		} else {
 			path := client.GetCurrentPath()
-			if path == "" { path = BS }
-			ps := currentShare; if ps == "" { ps = "?" }
+			if path == "" {
+				path = BS
+			}
+			ps := currentShare
+			if ps == "" {
+				ps = "?"
+			}
 			l.SetPrompt(fmt.Sprintf("SMB (%s%s%s:%s)> ", hostname, BS, ps, path))
 
 			line, err = l.Readline()
-			if err != nil { break }
+			if err != nil {
+				break
+			}
 		}
 
 		line = strings.TrimSpace(line)
 		args := splitArgs(line)
-		if len(args) == 0 { continue }
+		if len(args) == 0 {
+			continue
+		}
 		cmd := strings.ToLower(args[0])
 
 		switch cmd {
-		case "exit", "quit": return
+		case "exit", "quit":
+			return
 		case "close", "logoff":
 			client.Close()
 			fmt.Println("[+] Session closed.")
 			return
 		case "lcd", "hcd":
-			if len(args) < 2 { wd, _ := os.Getwd(); fmt.Printf("Local directory: %s\n", wd); continue }
+			if len(args) < 2 {
+				wd, _ := os.Getwd()
+				fmt.Printf("Local directory: %s\n", wd)
+				continue
+			}
 			if err := os.Chdir(strings.Join(args[1:], " ")); err != nil {
 				fmt.Printf("[-] Error: %v\n", err)
-			} else { wd, _ := os.Getwd(); fmt.Printf("[+] Local directory: %s\n", wd) }
+			} else {
+				wd, _ := os.Getwd()
+				fmt.Printf("[+] Local directory: %s\n", wd)
+			}
 		case "shares":
-			s, err := client.ListShares(); if err != nil { fmt.Printf("[-] Error: %v\n", err); continue }
-			for _, n := range s { fmt.Printf("    %s\n", n) }
+			s, err := client.ListShares()
+			if err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+				continue
+			}
+			for _, n := range s {
+				fmt.Printf("    %s\n", n)
+			}
 		case "use":
-			if len(args) < 2 { continue }
-			if err := client.UseShare(args[1]); err != nil { fmt.Printf("[-] Error: %v\n", err); continue }
+			if len(args) < 2 {
+				continue
+			}
+			if err := client.UseShare(args[1]); err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+				continue
+			}
 			currentShare = args[1]
 		case "ls":
-			dir := "."; if len(args) > 1 { dir = strings.Join(args[1:], " ") }
-			f, err := client.Ls(dir); if err != nil { fmt.Printf("[-] Error: %v\n", err); continue }
+			dir := "."
+			if len(args) > 1 {
+				dir = strings.Join(args[1:], " ")
+			}
+			f, err := client.Ls(dir)
+			if err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+				continue
+			}
 			for _, fi := range f {
-				m := "FILE"; if fi.IsDir() { m = "DIR " }
+				m := "FILE"
+				if fi.IsDir() {
+					m = "DIR "
+				}
 				fmt.Printf("    %s %10d %s\n", m, fi.Size(), fi.Name())
 			}
 		case "lls":
-			dir := "."; if len(args) > 1 { dir = strings.Join(args[1:], " ") }
-			f, err := os.ReadDir(dir); if err != nil { fmt.Printf("[-] Error: %v\n", err); continue }
+			dir := "."
+			if len(args) > 1 {
+				dir = strings.Join(args[1:], " ")
+			}
+			f, err := os.ReadDir(dir)
+			if err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+				continue
+			}
 			for _, fi := range f {
-				info, _ := fi.Info(); m := "FILE"; if fi.IsDir() { m = "DIR " }
+				info, _ := fi.Info()
+				m := "FILE"
+				if fi.IsDir() {
+					m = "DIR "
+				}
 				fmt.Printf("    %s %10d %s\n", m, info.Size(), fi.Name())
 			}
 		case "cd":
-			if len(args) < 2 { continue }
-			if err := client.Cd(strings.Join(args[1:], " ")); err != nil { fmt.Printf("[-] Error: %v\n", err) }
-		case "pwd": fmt.Printf("Current directory: %s\n", client.GetCurrentPath())
+			if len(args) < 2 {
+				continue
+			}
+			if err := client.Cd(strings.Join(args[1:], " ")); err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+			}
+		case "pwd":
+			fmt.Printf("Current directory: %s\n", client.GetCurrentPath())
 		case "get":
-			if len(args) < 2 { continue }
-			rem := args[1]; loc := rem; if len(args) > 2 { loc = args[2] }
-			if err := client.Get(rem, loc); err != nil { fmt.Printf("[-] Error: %v\n", err) } else { fmt.Println("[+] Done.") }
+			if len(args) < 2 {
+				continue
+			}
+			rem := args[1]
+			loc := rem
+			if len(args) > 2 {
+				loc = args[2]
+			}
+			if err := client.Get(rem, loc); err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+			} else {
+				fmt.Println("[+] Done.")
+			}
 		case "put":
-			if len(args) < 2 { continue }
-			loc := args[1]; rem := filepath.Base(loc); if len(args) > 2 { rem = args[2] }
-			if err := client.Put(loc, rem); err != nil { fmt.Printf("[-] Error: %v\n", err) } else { fmt.Println("[+] Done.") }
+			if len(args) < 2 {
+				continue
+			}
+			loc := args[1]
+			rem := filepath.Base(loc)
+			if len(args) > 2 {
+				rem = args[2]
+			}
+			if err := client.Put(loc, rem); err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+			} else {
+				fmt.Println("[+] Done.")
+			}
 		case "mkdir":
-			if len(args) < 2 { continue }
-			if err := client.Mkdir(strings.Join(args[1:], " ")); err != nil { fmt.Printf("[-] Error: %v\n", err) }
+			if len(args) < 2 {
+				continue
+			}
+			if err := client.Mkdir(strings.Join(args[1:], " ")); err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+			}
 		case "rmdir":
-			if len(args) < 2 { continue }
-			if err := client.Rmdir(strings.Join(args[1:], " ")); err != nil { fmt.Printf("[-] Error: %v\n", err) }
+			if len(args) < 2 {
+				continue
+			}
+			if err := client.Rmdir(strings.Join(args[1:], " ")); err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+			}
 		case "rm":
-			if len(args) < 2 { continue }
-			if err := client.Rm(strings.Join(args[1:], " ")); err != nil { fmt.Printf("[-] Error: %v\n", err) }
+			if len(args) < 2 {
+				continue
+			}
+			if err := client.Rm(strings.Join(args[1:], " ")); err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+			}
 		case "cat":
-			if len(args) < 2 { continue }
-			c, err := client.Cat(strings.Join(args[1:], " ")); if err != nil { fmt.Printf("[-] Error: %v\n", err) } else { fmt.Println(c) }
+			if len(args) < 2 {
+				continue
+			}
+			c, err := client.Cat(strings.Join(args[1:], " "))
+			if err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+			} else {
+				fmt.Println(c)
+			}
 		case "rename":
-			if len(args) < 3 { continue }
-			if err := client.Rename(args[1], args[2]); err != nil { fmt.Printf("[-] Error: %v\n", err) }
+			if len(args) < 3 {
+				continue
+			}
+			if err := client.Rename(args[1], args[2]); err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+			}
 		case "tree":
-			dir := "."; if len(args) > 1 { dir = strings.Join(args[1:], " ") }
+			dir := "."
+			if len(args) > 1 {
+				dir = strings.Join(args[1:], " ")
+			}
 			client.Tree(dir, func(p string, info os.FileInfo, err error) error {
-				if err != nil { return nil }; fmt.Printf("|-- %s\n", info.Name()); return nil
+				if err != nil {
+					return nil
+				}
+				fmt.Printf("|-- %s\n", info.Name())
+				return nil
 			})
 		case "mget":
-			if len(args) < 2 { continue }
+			if len(args) < 2 {
+				continue
+			}
 			client.Mget(args[1])
 		case "info":
-			p, err := client.OpenPipe("srvsvc"); if err != nil { fmt.Printf("[-] Error: %v\n", err); continue }
+			p, err := client.OpenPipe("srvsvc")
+			if err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+				continue
+			}
 			rpc := dcerpc.NewClient(p)
-			if err := rpc.Bind(srvsvc.UUID, 3, 0); err != nil { fmt.Printf("[-] Bind failed: %v\n", err); p.Close(); continue }
+			if err := rpc.Bind(srvsvc.UUID, 3, 0); err != nil {
+				fmt.Printf("[-] Bind failed: %v\n", err)
+				p.Close()
+				continue
+			}
 			inf, err := srvsvc.GetInfoLevel101(rpc, BS+BS+hostname)
-			if err != nil { fmt.Printf("[-] Error: %v\n", err) } else { fmt.Printf("[+] %s\n", inf) }
+			if err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+			} else {
+				fmt.Printf("[+] %s\n", inf)
+			}
 			p.Close()
 		case "help":
-			fmt.Println(`
+			fmt.Print(`
  logoff - logs off
  shares - list available shares
  use {sharename} - connect to an specific share
@@ -237,39 +360,72 @@ func shell(client *smb.Client, hostname string, inputFile string) {
  close - closes the current SMB Session
  exit - terminates the session
 `)
-		default: fmt.Printf("Unknown command: %s\n", cmd)
+		default:
+			fmt.Printf("Unknown command: %s\n", cmd)
 		}
 	}
 }
 
 func completeLocal(line string) []string {
-	args := splitArgs(line); if len(args) == 0 { return nil }
+	args := splitArgs(line)
+	if len(args) == 0 {
+		return nil
+	}
 	matches, _ := filepath.Glob(args[len(args)-1] + "*")
 	return matches
 }
 
 func completeRemote(client *smb.Client, line string) []string {
-	f, err := client.Ls("."); if err != nil { return nil }
+	f, err := client.Ls(".")
+	if err != nil {
+		return nil
+	}
 	var n []string
 	for _, fi := range f {
-		name := fi.Name(); if fi.IsDir() { name += "/" }
+		name := fi.Name()
+		if fi.IsDir() {
+			name += "/"
+		}
 		n = append(n, name)
 	}
 	return n
 }
 
 func splitArgs(line string) []string {
-	var a []string; var c strings.Builder; i, e := false, false; var q rune
+	var a []string
+	var c strings.Builder
+	i, e := false, false
+	var q rune
 	for _, r := range line {
-		if e { c.WriteRune(r); e = false; continue }
+		if e {
+			c.WriteRune(r)
+			e = false
+			continue
+		}
 		switch {
-		case r == rune(92): e = true
+		case r == rune(92):
+			e = true
 		case (r == '"' || r == '\''):
-			if !i { i = true; q = r } else if r == q { i = false; q = rune(0) } else { c.WriteRune(r) }
-		case r == ' ' && !i: if c.Len() > 0 { a = append(a, c.String()); c.Reset() }
-		default: c.WriteRune(r)
+			if !i {
+				i = true
+				q = r
+			} else if r == q {
+				i = false
+				q = rune(0)
+			} else {
+				c.WriteRune(r)
+			}
+		case r == ' ' && !i:
+			if c.Len() > 0 {
+				a = append(a, c.String())
+				c.Reset()
+			}
+		default:
+			c.WriteRune(r)
 		}
 	}
-	if c.Len() > 0 { a = append(a, c.String()) }
+	if c.Len() > 0 {
+		a = append(a, c.String())
+	}
 	return a
 }

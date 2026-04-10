@@ -1,0 +1,32 @@
+# gopacket .gitignore
+#
+# Default-deny at the repo root, allowlist what's expected. This catches
+# stray binaries from accidentally running `go build ./tools/...` at the
+# repo root, which would otherwise drop ~60 unnamed Go binaries into the
+# working tree.
+
+/*
+
+# Allowed root-level entries
+!/.gitignore
+!/.github
+!/LICENSE
+!/NOTICE
+!/README.md
+!/KNOWN_ISSUES.md
+!/Makefile
+!/go.mod
+!/go.sum
+!/install.sh
+!/internal
+!/pkg
+!/tools
+
+# Editor and OS detritus (anywhere in the tree)
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.swn
+.vscode/
+.idea/

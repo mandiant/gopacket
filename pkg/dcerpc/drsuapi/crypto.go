@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package drsuapi
 
 import (
@@ -321,10 +324,10 @@ func ExtractRIDFromSID(sid []byte) uint32 {
 
 // ParseEncryptedHash parses the encrypted hash structure
 type EncryptedHash struct {
-	Version   uint16
-	Flags     uint16
-	Salt      [16]byte
-	Hash      []byte
+	Version uint16
+	Flags   uint16
+	Salt    [16]byte
+	Hash    []byte
 }
 
 func ParseEncryptedPwdBlob(data []byte) (*EncryptedHash, error) {

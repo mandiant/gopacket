@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // Package dcom implements the DCOM Remote Protocol (MS-DCOM).
 package dcom
 
@@ -128,8 +131,8 @@ func (o *ORPCTHAT) Unmarshal(data []byte) error {
 type STDOBJREF struct {
 	Flags       uint32
 	CPublicRefs uint32
-	OXID        uint64 // Object Exporter ID
-	OID         uint64 // Object ID
+	OXID        uint64   // Object Exporter ID
+	OID         uint64   // Object ID
 	IPID        [16]byte // Interface Pointer ID
 }
 
@@ -162,13 +165,13 @@ func (o *OBJREF) Unmarshal(data []byte) error {
 
 // DCOMConnection represents a connection to a DCOM server
 type DCOMConnection struct {
-	target         string
-	creds          *session.Credentials
-	rpcClient      *dcerpc.Client
-	transport      *dcerpc.TCPTransport
-	oxidPort       int
-	interfaces     map[string]*Interface           // IPID -> Interface
-	ifaceClients   map[[16]byte]*dcerpc.Client     // IID -> RPC client (separate connection per interface)
+	target          string
+	creds           *session.Credentials
+	rpcClient       *dcerpc.Client
+	transport       *dcerpc.TCPTransport
+	oxidPort        int
+	interfaces      map[string]*Interface             // IPID -> Interface
+	ifaceClients    map[[16]byte]*dcerpc.Client       // IID -> RPC client (separate connection per interface)
 	ifaceTransports map[[16]byte]*dcerpc.TCPTransport // IID -> TCP transport
 }
 

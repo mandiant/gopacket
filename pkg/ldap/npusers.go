@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package ldap
 
 // UserNP represents a user who might not require pre-authentication.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package dcerpc
 
 import (
@@ -16,17 +19,17 @@ import (
 )
 
 type Client struct {
-	Transport     Transport    // Underlying transport (TCP or Pipe)
+	Transport     Transport // Underlying transport (TCP or Pipe)
 	CallID        uint32
 	MaxFrag       uint16
-	Auth          *AuthHandler          // Set after successful BindAuth (NTLM)
-	KrbAuth       *KerberosAuthHandler  // Set after successful BindAuthKerberos
-	AuthType      uint8                 // AuthnWinNT (10) or AuthnKerberos (16)
-	Authenticated bool                  // True when using packet privacy
-	ContextID     uint16                // Current presentation context ID
-	AuthCtxID     uint32                // Auth context ID for sec_trailer
-	Contexts      map[[16]byte]uint16   // Map of Interface UUID to Context ID
-	AssocGroup    uint32                // Association Group ID from BindAck
+	Auth          *AuthHandler         // Set after successful BindAuth (NTLM)
+	KrbAuth       *KerberosAuthHandler // Set after successful BindAuthKerberos
+	AuthType      uint8                // AuthnWinNT (10) or AuthnKerberos (16)
+	Authenticated bool                 // True when using packet privacy
+	ContextID     uint16               // Current presentation context ID
+	AuthCtxID     uint32               // Auth context ID for sec_trailer
+	Contexts      map[[16]byte]uint16  // Map of Interface UUID to Context ID
+	AssocGroup    uint32               // Association Group ID from BindAck
 }
 
 // InterfaceBinding represents an interface to bind to
@@ -41,8 +44,8 @@ func GetWindowsMaxFrag() uint16 {
 	// 5840: Modern Windows (W10/2016+)
 	// 2920: Seen in certain SMB-encapsulated RPC scenarios
 	profiles := []uint16{4280, 5840, 2920}
-	
-n, err := rand.Int(rand.Reader, big.NewInt(int64(len(profiles))))
+
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(len(profiles))))
 	if err != nil {
 		return 5840 // Default to modern if RNG fails
 	}
@@ -109,23 +112,23 @@ func (c *Client) BindWithSyntax(uuid [16]byte, major, minor uint16, transferSynt
 	}
 
 	buf := new(bytes.Buffer)
-	
+
 	// Write Common
 	totalLen := 16 + 8 + 4 + 44
 	common.FragLength = uint16(totalLen)
-	
-binary.Write(buf, binary.LittleEndian, common)
+
+	binary.Write(buf, binary.LittleEndian, common)
 	binary.Write(buf, binary.LittleEndian, bind)
-	
+
 	// Context List Header
-	buf.WriteByte(1) // NumContexts
-	buf.WriteByte(0) // Reserved
+	buf.WriteByte(1)                                  // NumContexts
+	buf.WriteByte(0)                                  // Reserved
 	binary.Write(buf, binary.LittleEndian, uint16(0)) // Reserved
-	
+
 	// Context Item
 	binary.Write(buf, binary.LittleEndian, ctx)
-	
-c.Contexts[uuid] = 0
+
+	c.Contexts[uuid] = 0
 
 	// 2. Send
 	if build.Debug {
@@ -375,7 +378,7 @@ func (c *Client) CallAuth(opNum uint16, payload []byte) ([]byte, error) {
 
 	for {
 		// Read Response Header
-	headerBuf := make([]byte, 16)
+		headerBuf := make([]byte, 16)
 		if err := c.readFull(headerBuf); err != nil {
 			return nil, fmt.Errorf("failed to read Response header: %v", err)
 		}
@@ -401,8 +404,8 @@ func (c *Client) CallAuth(opNum uint16, payload []byte) ([]byte, error) {
 		}
 
 		// Read Response Body
-	bodyLen := respHeader.FragLength - 16
-	body := make([]byte, bodyLen)
+		bodyLen := respHeader.FragLength - 16
+		body := make([]byte, bodyLen)
 		if err := c.readFull(body); err != nil {
 			return nil, fmt.Errorf("failed to read Response body: %v", err)
 		}
@@ -422,7 +425,7 @@ func (c *Client) CallAuth(opNum uint16, payload []byte) ([]byte, error) {
 		respSig := body[len(body)-int(respHeader.AuthLength):]
 
 		// Extract security trailer (8 bytes before signature)
-	trailerOffset := len(body) - int(respHeader.AuthLength) - 8
+		trailerOffset := len(body) - int(respHeader.AuthLength) - 8
 		if trailerOffset < 8 {
 			return nil, fmt.Errorf("invalid response structure")
 		}
@@ -483,7 +486,7 @@ func (c *Client) CallAuth(opNum uint16, payload []byte) ([]byte, error) {
 		fragStub := decryptedBlob[:actualStubLen]
 
 		// Append to accumulated stub data
-	allStubData = append(allStubData, fragStub...)
+		allStubData = append(allStubData, fragStub...)
 
 		if build.Debug {
 			log.Printf("[D] RPC: Decrypted %d bytes of stub data (total: %d)", len(fragStub), len(allStubData))
@@ -591,7 +594,7 @@ func (c *Client) CallAuthDCOM(opNum uint16, payload []byte, ipid [16]byte) ([]by
 
 	for {
 		// Read Response Header
-	headerBuf := make([]byte, 16)
+		headerBuf := make([]byte, 16)
 		if err := c.readFull(headerBuf); err != nil {
 			return nil, fmt.Errorf("failed to read Response header: %v", err)
 		}
@@ -613,8 +616,8 @@ func (c *Client) CallAuthDCOM(opNum uint16, payload []byte, ipid [16]byte) ([]by
 		}
 
 		// Read Response Body
-	bodyLen := respHeader.FragLength - 16
-	body := make([]byte, bodyLen)
+		bodyLen := respHeader.FragLength - 16
+		body := make([]byte, bodyLen)
 		if err := c.readFull(body); err != nil {
 			return nil, fmt.Errorf("failed to read Response body: %v", err)
 		}
@@ -628,7 +631,7 @@ func (c *Client) CallAuthDCOM(opNum uint16, payload []byte, ipid [16]byte) ([]by
 		respSig := body[len(body)-int(respHeader.AuthLength):]
 
 		// Extract security trailer
-	trailerOffset := len(body) - int(respHeader.AuthLength) - 8
+		trailerOffset := len(body) - int(respHeader.AuthLength) - 8
 		if trailerOffset < 8 {
 			return nil, fmt.Errorf("invalid response structure")
 		}
@@ -645,9 +648,9 @@ func (c *Client) CallAuthDCOM(opNum uint16, payload []byte, ipid [16]byte) ([]by
 		// Then verify signature over PLAINTEXT data
 		// Include: common header + response header + plaintext stub+padding + sec_trailer
 		verifyBuf := new(bytes.Buffer)
-		verifyBuf.Write(headerBuf)         // common header (16 bytes)
-		verifyBuf.Write(body[0:8])          // response header (8 bytes)
-		verifyBuf.Write(decryptedBlob)      // decrypted stub+padding
+		verifyBuf.Write(headerBuf)                             // common header (16 bytes)
+		verifyBuf.Write(body[0:8])                             // response header (8 bytes)
+		verifyBuf.Write(decryptedBlob)                         // decrypted stub+padding
 		verifyBuf.Write(body[trailerOffset : trailerOffset+8]) // sec_trailer
 
 		c.Auth.Verify(respSig, verifyBuf.Bytes())
@@ -697,31 +700,31 @@ func (c *Client) BindAuth(uuid [16]byte, major, minor uint16, creds *session.Cre
 	}
 
 	ctx := header.ContextItem{
-		ContextID:      0,
-		NumTransItems:  1,
-		InterfaceUUID:  uuid,
-		InterfaceVer:   major,
+		ContextID:       0,
+		NumTransItems:   1,
+		InterfaceUUID:   uuid,
+		InterfaceVer:    major,
 		InterfaceVerMin: minor,
-		TransferSyntax: header.TransferSyntaxNDR,
-		TransferVer:    2,
+		TransferSyntax:  header.TransferSyntaxNDR,
+		TransferVer:     2,
 	}
 
 	// Use auth_ctx_id = ctx + 79231 like Impacket
 	authCtxID := uint32(79231) // For initial bind, ctx=0
 
 	secTrailer := header.SecTrailer{
-		AuthType:   header.AuthnWinNT,
-		AuthLevel:  header.AuthnLevelPktPrivacy,
-		PadLen:     0, // Will calculate
-		Reserved:   0,
-		ContextID:  authCtxID,
+		AuthType:  header.AuthnWinNT,
+		AuthLevel: header.AuthnLevelPktPrivacy,
+		PadLen:    0, // Will calculate
+		Reserved:  0,
+		ContextID: authCtxID,
 	}
 
 	// Calculation:
 	// Body: Bind(8) + CtxList(4) + CtxItem(44) = 56 bytes.
 	// We need 4-byte alignment for the Auth Trailer.
 	// 56 is aligned. PadLen = 0.
-	
+
 	// Total Frag Length: Header(16) + Body(56) + Trailer(8) + TokenLen
 	common.AuthLength = uint16(len(negToken))
 	common.FragLength = 16 + 56 + 8 + common.AuthLength
@@ -729,12 +732,14 @@ func (c *Client) BindAuth(uuid [16]byte, major, minor uint16, creds *session.Cre
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, common)
 	binary.Write(buf, binary.LittleEndian, bind)
-	buf.WriteByte(1); buf.WriteByte(0); binary.Write(buf, binary.LittleEndian, uint16(0)) // Context List Header
+	buf.WriteByte(1)
+	buf.WriteByte(0)
+	binary.Write(buf, binary.LittleEndian, uint16(0)) // Context List Header
 	binary.Write(buf, binary.LittleEndian, ctx)
 	binary.Write(buf, binary.LittleEndian, secTrailer)
 	buf.Write(negToken)
-	
-c.Contexts[uuid] = 0
+
+	c.Contexts[uuid] = 0
 
 	// Send Bind
 	if build.Debug {
@@ -748,23 +753,27 @@ c.Contexts[uuid] = 0
 	// Use a larger buffer for BindAck as it might contain large Auth Tokens or exceed initial estimates
 	readBuf := make([]byte, 65535)
 	err = c.readFull(readBuf[:16]) // Read Header
-	if err != nil { return err }
-	
+	if err != nil {
+		return err
+	}
+
 	var ackHeader header.CommonHeader
 	structure.UnpackLE(readBuf[:16], &ackHeader)
-	
+
 	if ackHeader.FragLength > 65535 {
 		return fmt.Errorf("BindAck too large: %d", ackHeader.FragLength)
 	}
 
 	// Read rest
 	err = c.readFull(readBuf[16:ackHeader.FragLength])
-	if err != nil { return err }
-	
+	if err != nil {
+		return err
+	}
+
 	if ackHeader.PacketType != header.PktTypeBindAck {
 		return fmt.Errorf("expected BindAck, got %d", ackHeader.PacketType)
 	}
-	
+
 	// Capture AssocGroup from BindAck body (offset 4 in body)
 	// Body starts at offset 16 of readBuf
 	if ackHeader.FragLength >= 24 { // 16 (Header) + 8 (BindAckHeader)
@@ -773,20 +782,20 @@ c.Contexts[uuid] = 0
 			log.Printf("[D] RPC: Captured AssocGroup: 0x%x", c.AssocGroup)
 		}
 	}
-	
+
 	if ackHeader.AuthLength == 0 {
 		return fmt.Errorf("server did not return auth info")
 	}
-	
+
 	// Token is at the end
 	tokenOffset := int(ackHeader.FragLength) - int(ackHeader.AuthLength)
-	challenge := readBuf[tokenOffset : int(ackHeader.FragLength)]
+	challenge := readBuf[tokenOffset:int(ackHeader.FragLength)]
 
 	if build.Debug {
 		log.Printf("[D] RPC: Received Challenge (%d bytes)", len(challenge))
 		log.Printf("[D] RPC: Challenge hex: %x", challenge)
 	}
-	
+
 	// 4. Generate Authenticate Token
 	authToken, err := auth.GetAuthenticateToken(challenge)
 	if err != nil {
@@ -799,15 +808,17 @@ c.Contexts[uuid] = 0
 	c.CallID++
 	common.AuthLength = uint16(len(authToken))
 	common.FragLength = 16 + 56 + 8 + common.AuthLength
-	
-buf.Reset()
+
+	buf.Reset()
 	binary.Write(buf, binary.LittleEndian, common)
-	binary.Write(buf, binary.LittleEndian, bind) 
-	buf.WriteByte(1); buf.WriteByte(0); binary.Write(buf, binary.LittleEndian, uint16(0))
+	binary.Write(buf, binary.LittleEndian, bind)
+	buf.WriteByte(1)
+	buf.WriteByte(0)
+	binary.Write(buf, binary.LittleEndian, uint16(0))
 	binary.Write(buf, binary.LittleEndian, ctx)
 	binary.Write(buf, binary.LittleEndian, secTrailer)
 	buf.Write(authToken)
-	
+
 	if build.Debug {
 		log.Printf("[D] RPC: Sending AlterContext with NTLM Authenticate (%d bytes)", len(authToken))
 		log.Printf("[D] RPC: Authenticate token hex: %x", authToken)
@@ -815,11 +826,13 @@ buf.Reset()
 	if _, err := c.Transport.Write(buf.Bytes()); err != nil {
 		return err
 	}
-	
+
 	// 6. Read AlterContextResp
 	// Read Header
 	err = c.readFull(readBuf[:16])
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	structure.UnpackLE(readBuf[:16], &ackHeader)
 	if ackHeader.PacketType == header.PktTypeFault {
@@ -841,11 +854,13 @@ buf.Reset()
 	if ackHeader.PacketType != header.PktTypeAlterContextResp {
 		return fmt.Errorf("expected AlterContextResp (15), got %d", ackHeader.PacketType)
 	}
-	
+
 	// Read Body
 	err = c.readFull(readBuf[16:ackHeader.FragLength])
-	if err != nil { return err }
-	
+	if err != nil {
+		return err
+	}
+
 	// Store auth handler for subsequent sealed calls
 	c.Auth = auth
 	c.Authenticated = true
@@ -892,48 +907,48 @@ func (c *Client) BindAuthMulti(bindings []InterfaceBinding, creds *session.Crede
 
 	// Create Context Items
 	buf := new(bytes.Buffer)
-	
+
 	// Context List Header
 	// NumContexts (1 byte)
 	buf.WriteByte(byte(len(bindings)))
-	buf.WriteByte(0) // Reserved
+	buf.WriteByte(0)                                  // Reserved
 	binary.Write(buf, binary.LittleEndian, uint16(0)) // Reserved
-	
+
 	// Write each context item
 	ctxBodyLen := 0
 	for i, b := range bindings {
 		ctxID := uint16(i)
 		ctx := header.ContextItem{
-			ContextID:      ctxID,
-			NumTransItems:  1,
-			InterfaceUUID:  b.InterfaceUUID,
-			InterfaceVer:   b.Major,
+			ContextID:       ctxID,
+			NumTransItems:   1,
+			InterfaceUUID:   b.InterfaceUUID,
+			InterfaceVer:    b.Major,
 			InterfaceVerMin: b.Minor,
-			TransferSyntax: header.TransferSyntaxNDR,
-			TransferVer:    2,
+			TransferSyntax:  header.TransferSyntaxNDR,
+			TransferVer:     2,
 		}
 		binary.Write(buf, binary.LittleEndian, ctx)
 		ctxBodyLen += 44
-		
+
 		// Map context ID to UUID
-	c.Contexts[b.InterfaceUUID] = ctxID
+		c.Contexts[b.InterfaceUUID] = ctxID
 	}
-	
+
 	// Use auth_ctx_id = 79231 for initial bind
 	authCtxID := uint32(79231)
 
 	secTrailer := header.SecTrailer{
-		AuthType:   header.AuthnWinNT,
-		AuthLevel:  header.AuthnLevelPktPrivacy,
-		PadLen:     0,
-		Reserved:   0,
-		ContextID:  authCtxID,
+		AuthType:  header.AuthnWinNT,
+		AuthLevel: header.AuthnLevelPktPrivacy,
+		PadLen:    0,
+		Reserved:  0,
+		ContextID: authCtxID,
 	}
 
 	// Calculate lengths
 	// Body: Bind(8) + CtxListHeader(4) + CtxItems(N*44)
 	bodyLen := 8 + 4 + ctxBodyLen
-	
+
 	// Calculate padding for sec_trailer (4-byte alignment)
 	padLen := (4 - (bodyLen % 4)) % 4
 	secTrailer.PadLen = uint8(padLen)
@@ -947,10 +962,10 @@ func (c *Client) BindAuthMulti(bindings []InterfaceBinding, creds *session.Crede
 	binary.Write(fullBuf, binary.LittleEndian, common)
 	binary.Write(fullBuf, binary.LittleEndian, bind)
 	fullBuf.Write(buf.Bytes()) // Context List
-	
+
 	// Padding
 	fullBuf.Write(make([]byte, padLen))
-	
+
 	// SecTrailer + Token
 	binary.Write(fullBuf, binary.LittleEndian, secTrailer)
 	fullBuf.Write(negToken)
@@ -962,17 +977,21 @@ func (c *Client) BindAuthMulti(bindings []InterfaceBinding, creds *session.Crede
 
 	// 3. Read BindAck
 	readBuf := make([]byte, 65535)
-	if err := c.readFull(readBuf[:16]); err != nil { return err }
-	
+	if err := c.readFull(readBuf[:16]); err != nil {
+		return err
+	}
+
 	var ackHeader header.CommonHeader
 	structure.UnpackLE(readBuf[:16], &ackHeader)
-	
+
 	if ackHeader.FragLength > 65535 {
 		return fmt.Errorf("BindAck too large")
 	}
 
-	if err := c.readFull(readBuf[16:ackHeader.FragLength]); err != nil { return err }
-	
+	if err := c.readFull(readBuf[16:ackHeader.FragLength]); err != nil {
+		return err
+	}
+
 	if ackHeader.PacketType != header.PktTypeBindAck {
 		return fmt.Errorf("expected BindAck, got %d", ackHeader.PacketType)
 	}
@@ -988,59 +1007,53 @@ func (c *Client) BindAuthMulti(bindings []InterfaceBinding, creds *session.Crede
 		portLen := binary.LittleEndian.Uint16(readBuf[24:26])
 		// Skip PortAddr
 		offset := 26 + int(portLen)
-		// Align to 4 bytes? No, results list is 4-byte aligned from beginning of PDU?
-		// [MS-RPCE] says PortAddr is followed by optional padding for 4-byte alignment of ResultList.
-		// ResultList starts with nResults (1 byte).
+		// Per [MS-RPCE], PortAddr is followed by optional padding to 4-byte-align the
+		// ResultList (which begins with nResults, 1 byte).
 
-		// Let's find the results.
-		// ResultList usually comes after PortAddr padding.
-		// But calculating exact offset is annoying.
-		// However, we know Auth info is at the END.
-		
-		// Let's rely on the fact that we sent N contexts.
-		// ResultList should have N results.
-		// Each result is 24 bytes (Result, Reason, Syntax).
-		// Wait, Result is: Result(2), Reason(2), TransferSyntax(UUID 16 + Ver 4) = 24 bytes.
-		
-		// We can scan for the results? No.
-		
+		// Parse ResultList: nResults(1) + Reserved(3) + N * Result(24).
+		// Each Result is Result(2) + Reason(2) + TransferSyntax(UUID 16 + Ver 4) = 24 bytes.
+		// Auth info is at the end of the PDU (AuthLength bytes), so we parse forward from the
+		// known ResultList start and rely on nResults matching the contexts we sent.
+
 		if build.Debug {
 			log.Printf("[D] RPC: Parsing BindAck results (offset %d)", offset)
 		}
-		
+
 		// Try to read results
 		if offset < int(ackHeader.FragLength) {
-		    // Align offset
-		    if offset % 4 != 0 {
-		        offset += 4 - (offset % 4)
-		    }
-		    
-		    if offset < int(ackHeader.FragLength) {
-		        nResults := readBuf[offset]
-		        offset++
-		        offset += 3 // Reserved
-		        
-		        if build.Debug {
-		             log.Printf("[D] RPC: BindAck returned %d results", nResults)
-		        }
-		        
-		        for i := 0; i < int(nResults); i++ {
-		            if offset+24 > int(ackHeader.FragLength) { break }
-		            res := binary.LittleEndian.Uint16(readBuf[offset : offset+2])
-		            reason := binary.LittleEndian.Uint16(readBuf[offset+2 : offset+4])
-		            fmt.Printf("[D] RPC: Bind Result %d: Result=%d (0=Ack), Reason=%d\n", i, res, reason)
-		            offset += 24
-		        }
-		    }
+			// Align offset
+			if offset%4 != 0 {
+				offset += 4 - (offset % 4)
+			}
+
+			if offset < int(ackHeader.FragLength) {
+				nResults := readBuf[offset]
+				offset++
+				offset += 3 // Reserved
+
+				if build.Debug {
+					log.Printf("[D] RPC: BindAck returned %d results", nResults)
+				}
+
+				for i := 0; i < int(nResults); i++ {
+					if offset+24 > int(ackHeader.FragLength) {
+						break
+					}
+					res := binary.LittleEndian.Uint16(readBuf[offset : offset+2])
+					reason := binary.LittleEndian.Uint16(readBuf[offset+2 : offset+4])
+					fmt.Printf("[D] RPC: Bind Result %d: Result=%d (0=Ack), Reason=%d\n", i, res, reason)
+					offset += 24
+				}
+			}
 		}
 	}
-	
+
 	if ackHeader.AuthLength == 0 {
 		return fmt.Errorf("server did not return auth info")
 	}
-	
+
 	tokenOffset := int(ackHeader.FragLength) - int(ackHeader.AuthLength)
-	challenge := readBuf[tokenOffset : int(ackHeader.FragLength)]
+	challenge := readBuf[tokenOffset:int(ackHeader.FragLength)]
 
 	// 4. Generate Authenticate Token
 	authToken, err := auth.GetAuthenticateToken(challenge)
@@ -1054,7 +1067,7 @@ func (c *Client) BindAuthMulti(bindings []InterfaceBinding, creds *session.Crede
 	c.CallID++
 	common.AuthLength = uint16(len(authToken))
 	common.FragLength = 16 + 56 + 8 + common.AuthLength
-	
+
 	fullBuf.Reset()
 	binary.Write(fullBuf, binary.LittleEndian, common)
 	binary.Write(fullBuf, binary.LittleEndian, bind)
@@ -1062,21 +1075,25 @@ func (c *Client) BindAuthMulti(bindings []InterfaceBinding, creds *session.Crede
 	fullBuf.Write(make([]byte, padLen))
 	binary.Write(fullBuf, binary.LittleEndian, secTrailer)
 	fullBuf.Write(authToken)
-	
+
 	if _, err := c.Transport.Write(fullBuf.Bytes()); err != nil {
 		return err
 	}
-	
+
 	// 6. Read AlterContextResp
-	if err := c.readFull(readBuf[:16]); err != nil { return err }
+	if err := c.readFull(readBuf[:16]); err != nil {
+		return err
+	}
 
 	structure.UnpackLE(readBuf[:16], &ackHeader)
 	if ackHeader.PacketType == header.PktTypeFault {
 		return fmt.Errorf("bind failed with RPC Fault")
 	}
-	
-	if err := c.readFull(readBuf[16:ackHeader.FragLength]); err != nil { return err }
-	
+
+	if err := c.readFull(readBuf[16:ackHeader.FragLength]); err != nil {
+		return err
+	}
+
 	c.Auth = auth
 	c.Authenticated = true
 	c.AuthCtxID = 79231
@@ -1205,7 +1222,7 @@ func (c *Client) BindAuthKerberos(uuid [16]byte, major, minor uint16, creds *ses
 
 	if ackHeader.PacketType == header.PktTypeBindNak {
 		// Read Nak body
-	nakBody := readBuf[16:ackHeader.FragLength]
+		nakBody := readBuf[16:ackHeader.FragLength]
 		if len(nakBody) >= 2 {
 			reason := binary.LittleEndian.Uint16(nakBody[0:2])
 			return fmt.Errorf("Kerberos bind rejected (BindNak): reason=%d", reason)
@@ -1683,7 +1700,7 @@ func (c *Client) CallAuthKerberos(opNum uint16, payload []byte) ([]byte, error) 
 
 	for {
 		// Read Response Header
-	headerBuf := make([]byte, 16)
+		headerBuf := make([]byte, 16)
 		if err := c.readFull(headerBuf); err != nil {
 			return nil, fmt.Errorf("failed to read Response header: %v", err)
 		}
@@ -1705,8 +1722,8 @@ func (c *Client) CallAuthKerberos(opNum uint16, payload []byte) ([]byte, error) 
 		}
 
 		// Read Response Body
-	bodyLen := respHeader.FragLength - 16
-	body := make([]byte, bodyLen)
+		bodyLen := respHeader.FragLength - 16
+		body := make([]byte, bodyLen)
 		if err := c.readFull(body); err != nil {
 			return nil, fmt.Errorf("failed to read Response body: %v", err)
 		}
@@ -1720,7 +1737,7 @@ func (c *Client) CallAuthKerberos(opNum uint16, payload []byte) ([]byte, error) 
 		respSig := body[len(body)-int(respHeader.AuthLength):]
 
 		// Extract security trailer
-	trailerOffset := len(body) - int(respHeader.AuthLength) - 8
+		trailerOffset := len(body) - int(respHeader.AuthLength) - 8
 		if trailerOffset < 8 {
 			return nil, fmt.Errorf("invalid response structure")
 		}

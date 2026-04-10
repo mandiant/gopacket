@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package kerberos
 
 import (
@@ -177,11 +180,12 @@ func GetPAC(req *PACRequest) (*PAC, error) {
 
 // setS4UU2UFlags sets the KDC options for S4U2Self + U2U
 // From Impacket getPac.py:
-//   forwardable (bit 1)
-//   renewable (bit 8)
-//   renewable_ok (bit 27)
-//   canonicalize (bit 15)
-//   enc_tkt_in_skey (bit 26)
+//
+//	forwardable (bit 1)
+//	renewable (bit 8)
+//	renewable_ok (bit 27)
+//	canonicalize (bit 15)
+//	enc_tkt_in_skey (bit 26)
 func setS4UU2UFlags() []byte {
 	// Bits are numbered from MSB (bit 0) to LSB
 	// In a 32-bit field packed into 4 bytes (big-endian order for bits):

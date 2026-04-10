@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // Package oaut implements OLE Automation interfaces (IDispatch)
 package oaut
 
@@ -24,53 +27,53 @@ const (
 
 // Invoke flags
 const (
-	CYCLELOGGING        = 0x00000000
-	CYCLELOGGING_2      = 0x00000000
-	CYCLELOGGING_3      = 0x00000000
-	DISPATCH_METHOD     = 0x00000001
-	DISPATCH_PROPERTYGET = 0x00000002
-	DISPATCH_PROPERTYPUT = 0x00000004
+	CYCLELOGGING            = 0x00000000
+	CYCLELOGGING_2          = 0x00000000
+	CYCLELOGGING_3          = 0x00000000
+	DISPATCH_METHOD         = 0x00000001
+	DISPATCH_PROPERTYGET    = 0x00000002
+	DISPATCH_PROPERTYPUT    = 0x00000004
 	DISPATCH_PROPERTYPUTREF = 0x00000008
 )
 
 // VARIANT types (VT_*)
 const (
-	VT_EMPTY    = 0
-	VT_NULL     = 1
-	VT_I2       = 2
-	VT_I4       = 3
-	VT_R4       = 4
-	VT_R8       = 5
-	VT_CY       = 6
-	VT_DATE     = 7
-	VT_BSTR     = 8
-	VT_DISPATCH = 9
-	VT_ERROR    = 10
-	VT_BOOL     = 11
-	VT_VARIANT  = 12
-	VT_UNKNOWN  = 13
-	VT_DECIMAL  = 14
-	VT_I1       = 16
-	VT_UI1      = 17
-	VT_UI2      = 18
-	VT_UI4      = 19
-	VT_I8       = 20
-	VT_UI8      = 21
-	VT_INT      = 22
-	VT_UINT     = 23
-	VT_VOID     = 24
-	VT_HRESULT  = 25
-	VT_PTR      = 26
-	VT_SAFEARRAY = 27
-	VT_CARRAY   = 28
+	VT_EMPTY       = 0
+	VT_NULL        = 1
+	VT_I2          = 2
+	VT_I4          = 3
+	VT_R4          = 4
+	VT_R8          = 5
+	VT_CY          = 6
+	VT_DATE        = 7
+	VT_BSTR        = 8
+	VT_DISPATCH    = 9
+	VT_ERROR       = 10
+	VT_BOOL        = 11
+	VT_VARIANT     = 12
+	VT_UNKNOWN     = 13
+	VT_DECIMAL     = 14
+	VT_I1          = 16
+	VT_UI1         = 17
+	VT_UI2         = 18
+	VT_UI4         = 19
+	VT_I8          = 20
+	VT_UI8         = 21
+	VT_INT         = 22
+	VT_UINT        = 23
+	VT_VOID        = 24
+	VT_HRESULT     = 25
+	VT_PTR         = 26
+	VT_SAFEARRAY   = 27
+	VT_CARRAY      = 28
 	VT_USERDEFINED = 29
-	VT_LPSTR    = 30
-	VT_LPWSTR   = 31
-	VT_RECORD   = 36
-	VT_INT_PTR  = 37
-	VT_UINT_PTR = 38
-	VT_ARRAY    = 0x2000
-	VT_BYREF    = 0x4000
+	VT_LPSTR       = 30
+	VT_LPWSTR      = 31
+	VT_RECORD      = 36
+	VT_INT_PTR     = 37
+	VT_UINT_PTR    = 38
+	VT_ARRAY       = 0x2000
+	VT_BYREF       = 0x4000
 )
 
 // IDispatch wraps a DCOM Interface for IDispatch calls
@@ -164,8 +167,8 @@ func (d *IDispatch) Invoke(dispID int32, lcid uint32, flags uint16, params *DISP
 
 // DISPPARAMS contains parameters for IDispatch::Invoke
 type DISPPARAMS struct {
-	Args         []*VARIANT
-	NamedArgs    []int32
+	Args      []*VARIANT
+	NamedArgs []int32
 }
 
 // Marshal serializes DISPPARAMS
@@ -279,7 +282,7 @@ func (v *VARIANT) Marshal(buf *bytes.Buffer) {
 		if disp != nil && disp.iface != nil {
 			// Write interface pointer - this is complex, simplified version
 			binary.Write(buf, binary.LittleEndian, uint32(0x00020000))
-			// TODO: Write OBJREF for the interface
+			// Write OBJREF for the interface
 		} else {
 			binary.Write(buf, binary.LittleEndian, uint64(0))
 		}

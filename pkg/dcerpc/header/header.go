@@ -1,17 +1,20 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package header
 
 // RPC Packet Types
 const (
-	PktTypeRequest  = 0
-	PktTypePing     = 1
-	PktTypeResponse = 2
-	PktTypeFault    = 3
-	PktTypeBind     = 11
-	PktTypeBindAck  = 12
-	PktTypeBindNak  = 13
-	PktTypeAlterContext = 14
+	PktTypeRequest          = 0
+	PktTypePing             = 1
+	PktTypeResponse         = 2
+	PktTypeFault            = 3
+	PktTypeBind             = 11
+	PktTypeBindAck          = 12
+	PktTypeBindNak          = 13
+	PktTypeAlterContext     = 14
 	PktTypeAlterContextResp = 15
-	PktTypeAuth3       = 16
+	PktTypeAuth3            = 16
 )
 
 // Bind context result codes
@@ -43,9 +46,9 @@ type CommonHeader struct {
 
 // BindHeader specific to Bind requests.
 type BindHeader struct {
-	MaxXmitFrag  uint16
-	MaxRecvFrag  uint16
-	AssocGroup   uint32
+	MaxXmitFrag uint16
+	MaxRecvFrag uint16
+	AssocGroup  uint32
 	// Context List follows
 }
 
@@ -58,14 +61,14 @@ type RequestHeader struct {
 
 // ContextItem represents an interface to bind to.
 type ContextItem struct {
-	ContextID      uint16
-	NumTransItems  uint8  // Usually 1
-	Reserved       uint8
-	InterfaceUUID  [16]byte
-	InterfaceVer   uint16 // Major
-	InterfaceVerMin uint16 // Minor
-	TransferSyntax [16]byte // NDR UUID
-	TransferVer    uint32
+	ContextID       uint16
+	NumTransItems   uint8 // Usually 1
+	Reserved        uint8
+	InterfaceUUID   [16]byte
+	InterfaceVer    uint16   // Major
+	InterfaceVerMin uint16   // Minor
+	TransferSyntax  [16]byte // NDR UUID
+	TransferVer     uint32
 }
 
 // Standard NDR Transfer Syntax UUID (8a885d04-1ceb-11c9-9fe8-08002b104860) v2.0

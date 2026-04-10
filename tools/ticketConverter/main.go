@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -148,8 +151,8 @@ func ccacheToKirbi(inputFile, outputFile string) error {
 			KeyType:  cred.Key.KeyType,
 			KeyValue: cred.Key.KeyValue,
 		},
-		PRealm: ccache.DefaultPrincipal.Realm,
-		PName:  ccache.DefaultPrincipal.PrincipalName,
+		PRealm:    ccache.DefaultPrincipal.Realm,
+		PName:     ccache.DefaultPrincipal.PrincipalName,
 		Flags:     cred.TicketFlags,
 		StartTime: cred.StartTime.UTC(),
 		EndTime:   cred.EndTime.UTC(),
@@ -225,11 +228,11 @@ func kirbiToCCache(data []byte, outputFile string) error {
 	buf.Write([]byte{0x05, 0x04})
 
 	// Header (DeltaTime)
-	binary.Write(&buf, binary.BigEndian, uint16(12)) // header length
-	binary.Write(&buf, binary.BigEndian, uint16(1))  // tag: DeltaTime
-	binary.Write(&buf, binary.BigEndian, uint16(8))  // tag length
+	binary.Write(&buf, binary.BigEndian, uint16(12))         // header length
+	binary.Write(&buf, binary.BigEndian, uint16(1))          // tag: DeltaTime
+	binary.Write(&buf, binary.BigEndian, uint16(8))          // tag length
 	binary.Write(&buf, binary.BigEndian, uint32(0xFFFFFFFF)) // time offset seconds
-	binary.Write(&buf, binary.BigEndian, uint32(0))        // time offset usec
+	binary.Write(&buf, binary.BigEndian, uint32(0))          // time offset usec
 
 	// Default principal from KrbCredInfo
 	writeCCachePrincipal(&buf, info.PName, info.PRealm)

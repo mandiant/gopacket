@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // exchanger is a tool for connecting to MS Exchange via RPC over HTTP v2
 // and querying the NSPI (Name Service Provider Interface) to enumerate
 // address books and extract user information.
 //
-// This is a Go port of Impacket's exchanger.py
+// # This is a Go port of Impacket's exchanger.py
 //
 // Usage:
 //
@@ -21,7 +24,6 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -1248,6 +1250,3 @@ func intToDword(n int32) uint32 {
 	}
 	return uint32(int64(n) + (1 << 32))
 }
-
-// Dummy flag package usage to avoid errors
-var _ = flag.NewFlagSet("dummy", flag.ExitOnError)

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package ntlm
 
 import (
@@ -48,7 +51,7 @@ type InfoMap struct {
 	// ChannelBindings
 }
 
-// TODO export to somewhere
+// InfoMap returns the negotiated target information block as a structured map.
 func (s *Session) InfoMap() *InfoMap {
 	return &InfoMap{
 		NbComputerName:  utf16le.DecodeToString(s.infoMap[MsvAvNbComputerName]),

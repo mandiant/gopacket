@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // Package icpr implements the MS-ICPR (ICertPassage Remote Protocol) interface.
 // This is used for certificate enrollment via DCE/RPC, as an alternative to
 // HTTP-based AD CS enrollment (ESC8).
@@ -31,9 +34,9 @@ const (
 
 // Disposition codes from CertServerRequest response
 const (
-	DispositionIssued           = 3 // CR_DISP_ISSUED — certificate issued
-	DispositionIssuedOutOfBand  = 4 // CR_DISP_ISSUED_OUT_OF_BAND
-	DispositionUnderSubmission  = 5 // CR_DISP_UNDER_SUBMISSION — pending approval
+	DispositionIssued          = 3 // CR_DISP_ISSUED — certificate issued
+	DispositionIssuedOutOfBand = 4 // CR_DISP_ISSUED_OUT_OF_BAND
+	DispositionUnderSubmission = 5 // CR_DISP_UNDER_SUBMISSION — pending approval
 )
 
 // CertServerRequest calls ICertPassage::CertServerRequest (opnum 0).
@@ -76,11 +79,12 @@ func CertServerRequest(client *dcerpc.Client, caName string, csrDER []byte, attr
 // buildCertServerRequest constructs the NDR-encoded request for CertServerRequest.
 //
 // Wire format (NDR):
-//   dwFlags:        DWORD (inline)
-//   pwszAuthority:  LPWSTR — unique pointer to conformant varying string
-//   pdwRequestId:   LPDWORD — unique pointer to DWORD
-//   pctbAttribs:    CERTTRANSBLOB — embedded struct (cb + pb pointer)
-//   pctbRequest:    CERTTRANSBLOB — embedded struct (cb + pb pointer)
+//
+//	dwFlags:        DWORD (inline)
+//	pwszAuthority:  LPWSTR — unique pointer to conformant varying string
+//	pdwRequestId:   LPDWORD — unique pointer to DWORD
+//	pctbAttribs:    CERTTRANSBLOB — embedded struct (cb + pb pointer)
+//	pctbRequest:    CERTTRANSBLOB — embedded struct (cb + pb pointer)
 //
 // Deferred pointer data follows inline data in referent ID order.
 func buildCertServerRequest(caName string, csrDER, attrBytes []byte) []byte {
@@ -158,12 +162,13 @@ func buildCertServerRequest(caName string, csrDER, attrBytes []byte) []byte {
 // parseCertServerResponse parses the NDR response from CertServerRequest.
 //
 // Response format:
-//   pdwRequestId:          DWORD
-//   pdwDisposition:        ULONG
-//   pctbCert:              CERTTRANSBLOB
-//   pctbEncodedCert:       CERTTRANSBLOB (contains the DER certificate)
-//   pctbDispositionMessage: CERTTRANSBLOB
-//   Return value:          HRESULT (4 bytes at end)
+//
+//	pdwRequestId:          DWORD
+//	pdwDisposition:        ULONG
+//	pctbCert:              CERTTRANSBLOB
+//	pctbEncodedCert:       CERTTRANSBLOB (contains the DER certificate)
+//	pctbDispositionMessage: CERTTRANSBLOB
+//	Return value:          HRESULT (4 bytes at end)
 func parseCertServerResponse(resp []byte) ([]byte, uint32, error) {
 	if len(resp) < 8 {
 		return nil, 0, fmt.Errorf("response too short: %d bytes", len(resp))
@@ -290,9 +295,9 @@ func writeConformantVaryingString(buf *bytes.Buffer, s string) {
 	runes = append(runes, 0) // null terminator
 	count := uint32(len(runes))
 
-	binary.Write(buf, binary.LittleEndian, count)    // MaxCount
+	binary.Write(buf, binary.LittleEndian, count)     // MaxCount
 	binary.Write(buf, binary.LittleEndian, uint32(0)) // Offset
-	binary.Write(buf, binary.LittleEndian, count)    // ActualCount
+	binary.Write(buf, binary.LittleEndian, count)     // ActualCount
 	for _, r := range runes {
 		binary.Write(buf, binary.LittleEndian, r)
 	}

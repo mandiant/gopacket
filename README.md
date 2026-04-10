@@ -2,12 +2,12 @@
 
 A complete Go implementation of [Impacket](https://github.com/fortra/impacket) — 63 tools and 24 library packages for Windows network protocol interaction, Active Directory enumeration, and attack execution. Built as a native Go framework so you can compile once and run anywhere without Python dependencies.
 
-> **Alpha Release** — gopacket is under active development. Core tools have been tested against Active Directory lab environments, but edge cases and protocol quirks are expected. If something isn't working, please test the same operation with Impacket side-by-side and include both outputs in your bug report. This helps us quickly identify whether it's a gopacket-specific issue or a shared protocol limitation.
+> **Beta Release** — gopacket is under active development. Core tools have been tested against Active Directory lab environments, but edge cases and protocol quirks are expected. If something isn't working, please test the same operation with Impacket side-by-side and include both outputs in your bug report. This helps us quickly identify whether it's a gopacket-specific issue or a shared protocol limitation.
 
 ## Installation
 
 ```bash
-git clone https://mandiant-pf-experimental-internal.googlesource.com/paullus/gopacket
+git clone <repository-url>
 cd gopacket
 
 # Build and install all tools as gopacket-<toolname> on your PATH
@@ -20,19 +20,26 @@ cd gopacket
 make build
 ```
 
-Requires Go 1.21+ and GCC (CGO is used for some dependencies).
+Requires Go 1.21+, GCC, and libpcap development headers
+(install with `apt install build-essential libpcap-dev` on Debian/Ubuntu/Kali,
+or `yum install gcc libpcap-devel` on RHEL/CentOS, or `brew install libpcap` on macOS).
+
+The libpcap headers are only needed by the `sniff` and `split` tools — if
+libpcap is missing, `install.sh` will skip those two and build the rest.
 
 To uninstall:
 ```bash
 ./install.sh --uninstall
 ```
 
-## Proxychains Support                                                                                                                                                                                              
-All gopacket tools work through proxychains out of the box. Because gopacket is compiled to native static binaries (not interpreted like Python), proxychains can intercept all network calls without issue. This makes it straightforward to route traffic through SOCKS proxies, C2 tunnels, or SSH port forwards during engagements.                                                                                       
+## Proxychains Support
+
+All gopacket tools work through proxychains out of the box. Because gopacket is compiled to native static binaries (not interpreted like Python), proxychains can intercept all network calls without issue. This makes it straightforward to route traffic through SOCKS proxies, C2 tunnels, or SSH port forwards during engagements.
+
 ```bash
-proxychains gopacket-secretsdump 'domain/user:password@target'       
+proxychains gopacket-secretsdump 'domain/user:password@target'
 proxychains gopacket-smbclient -k -no-pass 'domain/user@dc.domain.local'
-```       
+```
 
 ## Tools (63)
 
@@ -253,19 +260,60 @@ These are protocol-level limitations shared with Impacket, not gopacket bugs:
 
 See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for detailed information on each issue and workarounds.
 
-## Reporting Issues
+## Reporting Issues & Contributing
 
-> This is an alpha release. Bugs are expected.
+> This is a beta release. Bugs are expected, and contributions are welcome.
 
-If you encounter a problem:
+### Why we ask you to test with Impacket first
+
+Because gopacket implements the same wire protocols as Impacket, a large
+fraction of "bugs" turn out to be **environmental**, not gopacket-specific —
+patched DCs, LDAP signing requirements, EPA, PKT_INTEGRITY, SMB signing,
+NTLM MIC validation post-CVE-2019-1040, missing SPNs, time skew, DNS quirks,
+firewall rules, and so on. Running the same operation with Impacket side by
+side removes the environment from the equation:
+
+- **If Impacket fails the same way**, the issue is almost always
+  environmental and is likely already documented in
+  [KNOWN_ISSUES.md](KNOWN_ISSUES.md). No bug report needed.
+- **If Impacket succeeds where gopacket fails**, that's a real gopacket bug
+  and exactly what we want to hear about.
+
+This single triage step saves a lot of round-trips, so please don't skip it.
+
+### Filing a bug report
 
 1. Run the same operation with Impacket and note whether it succeeds or fails
-2. Re-run with `-debug` and capture the full output
-3. Include both outputs in your report
+2. Re-run gopacket with `-debug` and capture the full output
+3. **Anonymize anything sensitive before posting.** GitHub issues are public.
+   Strip or replace real hostnames, IP addresses, usernames, password hashes,
+   Kerberos tickets, domain names, SIDs, and any output line that could be
+   tied back to a real engagement. Replacing `corp.internal` → `example.local`
+   and `dc01.corp.internal` → `dc01.example.local` is fine — keep the
+   structure of the data, just not the identifying values. **If in doubt,
+   redact it.**
+4. Open a [GitHub issue](<repository-url>/issues/new) and include:
+   - Both outputs (gopacket and Impacket), as text not screenshots, anonymized
+   - The exact command line you ran (anonymized)
+   - Target OS, AD functional level, and any relevant hardening
+     (signing, EPA, channel binding, patch level)
+   - gopacket version / commit hash
 
-**Bug Reports:** [https://forms.gle/CaJ8hJ1UT8Wm7zp3A](https://forms.gle/CaJ8hJ1UT8Wm7zp3A)
+### Feature requests
 
-**Feature Requests / QoL Improvements:** [https://forms.gle/o6CLbWBLM1oXJ6yQ6](https://forms.gle/o6CLbWBLM1oXJ6yQ6)
+Open a [GitHub issue](<repository-url>/issues/new) describing the use case
+and the Impacket equivalent (if any). If the feature is on the
+"Missing Features" list above, mention which one — it helps us prioritize.
+
+### Pull requests
+
+PRs are welcome. Before opening one:
+
+- Run `go build ./...`, `go vet ./...`, `gofmt -l .`, and `go test ./...`
+  and make sure they all pass cleanly
+- Match the existing code style in the package you're touching
+- Keep changes focused — separate refactors from feature work
+- For non-trivial changes, open an issue first to discuss the approach
 
 ## Notes
 
@@ -274,3 +322,9 @@ If you encounter a problem:
 - If `KRB5CCNAME` is not set, tools will look for `<username>.ccache` in the current directory
 - All tools work through proxychains
 - This project is for authorized security testing and research purposes only
+
+## License
+
+Released under the [Apache License 2.0](LICENSE).
+
+gopacket is a clean Go reimplementation of [Impacket](https://github.com/fortra/impacket); see [NOTICE](NOTICE) for full third-party acknowledgments.

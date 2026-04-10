@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -108,10 +111,10 @@ func main() {
 	// LAPS attributes to retrieve
 	attributes := []string{
 		"sAMAccountName",
-		"ms-Mcs-AdmPwd",              // LAPS v1 password
-		"ms-Mcs-AdmPwdExpirationTime", // LAPS v1 expiration
-		"msLAPS-Password",             // LAPS v2 plaintext (JSON)
-		"msLAPS-EncryptedPassword",    // LAPS v2 encrypted
+		"ms-Mcs-AdmPwd",                 // LAPS v1 password
+		"ms-Mcs-AdmPwdExpirationTime",   // LAPS v1 expiration
+		"msLAPS-Password",               // LAPS v2 plaintext (JSON)
+		"msLAPS-EncryptedPassword",      // LAPS v2 encrypted
 		"msLAPS-PasswordExpirationTime", // LAPS v2 expiration
 	}
 

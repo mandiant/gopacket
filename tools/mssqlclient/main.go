@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -229,7 +232,7 @@ func (s *SQLShell) Execute(line string) {
 }
 
 func (s *SQLShell) printHelp() {
-	fmt.Println(`
+	fmt.Print(`
     exit                       - Exit the shell
     enable_xp_cmdshell         - Enable xp_cmdshell
     disable_xp_cmdshell        - Disable xp_cmdshell

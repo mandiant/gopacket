@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package registry
 
 import (
@@ -84,27 +87,27 @@ func (h *Hive) readCell(offset int32) ([]byte, error) {
 
 // NKRecord represents a key node
 type NKRecord struct {
-	Signature       uint16
-	Flags           uint16
-	LastModified    uint64
-	Access          uint32
-	ParentOffset    int32
-	SubKeyCount     uint32
-	SubKeyCountVol  uint32
-	SubKeyListOffset int32
+	Signature           uint16
+	Flags               uint16
+	LastModified        uint64
+	Access              uint32
+	ParentOffset        int32
+	SubKeyCount         uint32
+	SubKeyCountVol      uint32
+	SubKeyListOffset    int32
 	SubKeyListOffsetVol int32
-	ValueCount      uint32
-	ValueListOffset int32
-	SecurityOffset  int32
-	ClassOffset     int32
-	MaxSubKeyNameLen uint32
-	MaxSubKeyClassLen uint32
-	MaxValueNameLen uint32
-	MaxValueDataLen uint32
-	WorkVar         uint32
-	NameLen         uint16
-	ClassLen        uint16
-	Name            string
+	ValueCount          uint32
+	ValueListOffset     int32
+	SecurityOffset      int32
+	ClassOffset         int32
+	MaxSubKeyNameLen    uint32
+	MaxSubKeyClassLen   uint32
+	MaxValueNameLen     uint32
+	MaxValueDataLen     uint32
+	WorkVar             uint32
+	NameLen             uint16
+	ClassLen            uint16
+	Name                string
 }
 
 // parseNK parses an NK (key node) record
@@ -618,7 +621,7 @@ func (h *Hive) SetValueData(keyOffset int32, valueName string, newData []byte) e
 			// VK cell starts at cellOffset(vkOffset)+4 (skip cell size)
 			// DataOffset is at bytes 8..12 of the VK record (after sig:2 + nameLen:2 + dataLen:4)
 			vkPos := h.cellOffset(vkOffset) + 4 // skip cell size dword
-			dataFieldPos := vkPos + 8            // offset of DataOffset field
+			dataFieldPos := vkPos + 8           // offset of DataOffset field
 			copy(h.data[dataFieldPos:dataFieldPos+int(dataLen)], newData)
 			return nil
 		}

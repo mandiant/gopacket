@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package kerberos
 
 import (
@@ -79,7 +82,7 @@ func NewClientFromSession(creds *session.Credentials, target session.Target, dcI
 		} else {
 			// Get the actual realm from the ccache's default principal
 			// This handles cases where the domain in the target string differs
-			// from the full Kerberos realm (e.g., "liquorstore" vs "LIQUORSTORE.LOCAL")
+			// from the full Kerberos realm (e.g., "corp" vs "CORP.LOCAL")
 			if ccache.DefaultPrincipal.Realm != "" {
 				ccacheRealm := strings.ToUpper(ccache.DefaultPrincipal.Realm)
 				if build.Debug {
@@ -348,7 +351,7 @@ func (c *Client) GenerateDCERPCToken(spn string) ([]byte, types.EncryptionKey, e
 
 	// Force Sequence Number to 0 (Crucial for DCE/RPC binding)
 	auth.SeqNumber = 0
-	
+
 	// Create GSSAPI Checksum (0x8003)
 	// Flags must include GSS_C_DCE_STYLE (0x1000) for DCE/RPC!
 	// This is a Microsoft extension that tells the server we're doing DCE/RPC style authentication
@@ -357,12 +360,12 @@ func (c *Client) GenerateDCERPCToken(spn string) ([]byte, types.EncryptionKey, e
 		gssapi.ContextFlagConf | gssapi.ContextFlagInteg | GSS_C_DCE_STYLE
 
 	checksumBytes := buildGSSAPIChecksum(16, nil, flags)
-	
+
 	auth.Cksum = types.Checksum{
 		CksumType: 0x8003, // GSSAPI
 		Checksum:  checksumBytes,
 	}
-	
+
 	// Create AP_REQ
 	apReq, err := messages.NewAPReq(tkt, key, auth)
 	if err != nil {
@@ -377,7 +380,7 @@ func (c *Client) GenerateDCERPCToken(spn string) ([]byte, types.EncryptionKey, e
 	if err != nil {
 		return nil, types.EncryptionKey{}, fmt.Errorf("failed to marshal AP_REQ: %v", err)
 	}
-	
+
 	// Wrap in SPNEGO
 	spnegoToken, err := wrapSPNEGOToken(apReqBytes)
 	if err != nil {
@@ -501,9 +504,11 @@ func wrapASN1Tag(tag byte, data []byte) []byte {
 
 // buildGSSAPIChecksum creates a GSSAPI checksum for Kerberos auth.
 // This matches impacket's CheckSumField binary format (NOT ASN.1!):
-//   Lgth:  4 bytes little-endian uint32 (value = 16)
-//   Bnd:   16 bytes channel bindings (usually zeros)
-//   Flags: 4 bytes little-endian uint32
+//
+//	Lgth:  4 bytes little-endian uint32 (value = 16)
+//	Bnd:   16 bytes channel bindings (usually zeros)
+//	Flags: 4 bytes little-endian uint32
+//
 // Total: 24 bytes
 func buildGSSAPIChecksum(lgth int, bnd []byte, flags int) []byte {
 	buf := make([]byte, 24)

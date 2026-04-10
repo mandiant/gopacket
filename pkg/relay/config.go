@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -108,12 +111,12 @@ type Config struct {
 	// internal
 	stopOnce        sync.Once
 	stopChan        chan struct{}
-	originalTargets []TargetEntry            // full target list (immutable after init)
-	candidates      []TargetEntry            // working copy of targets
+	originalTargets []TargetEntry              // full target list (immutable after init)
+	candidates      []TargetEntry              // working copy of targets
 	finishedAttacks map[string]map[string]bool // targetURL → {identity → true}
 	failedAttacks   map[string]map[string]bool // targetURL → {identity → true}
-	relayedUser     string // username from relayed NTLM Type3 (set per-session)
-	relayedDomain   string // domain from relayed NTLM Type3 (set per-session)
+	relayedUser     string                     // username from relayed NTLM Type3 (set per-session)
+	relayedDomain   string                     // domain from relayed NTLM Type3 (set per-session)
 }
 
 // stopCh returns the stop channel, creating it if needed.

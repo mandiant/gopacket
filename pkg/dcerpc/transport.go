@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package dcerpc
 
 import (
@@ -24,10 +27,10 @@ type Transport interface {
 // This provides atomic request/response handling for DCE/RPC over named pipes.
 type PipeTransport struct {
 	Pipe       *smb2.File
-	writeBuf   []byte  // Buffers written data until Read() triggers Transact
-	readBuf    []byte  // Buffers response data from Transact
-	readOffset int     // Current offset into readBuf
-	maxOutput  int     // Maximum response size
+	writeBuf   []byte // Buffers written data until Read() triggers Transact
+	readBuf    []byte // Buffers response data from Transact
+	readOffset int    // Current offset into readBuf
+	maxOutput  int    // Maximum response size
 }
 
 func NewPipeTransport(pipe *smb2.File) *PipeTransport {

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package rpch
 
 import (
@@ -35,19 +38,19 @@ type Transport struct {
 	NTHash   string
 
 	// Authentication
-	AuthType      int  // AUTH_NTLM or AUTH_BASIC
-	UseBasicAuth  bool // Force basic auth
-	UseKerberos   bool // Use Kerberos authentication
-	AESKey        string
-	DCIP          string
-	Realm         string
+	AuthType     int  // AUTH_NTLM or AUTH_BASIC
+	UseBasicAuth bool // Force basic auth
+	UseKerberos  bool // Use Kerberos authentication
+	AESKey       string
+	DCIP         string
+	Realm        string
 
 	// Internal state
-	inConn          net.Conn       // IN channel connection
-	outConn         net.Conn       // OUT channel connection
-	inReader        *bufio.Reader
-	outReader       *bufio.Reader
-	outBodyReader   io.Reader      // HTTP response body reader (handles chunked decoding)
+	inConn            net.Conn // IN channel connection
+	outConn           net.Conn // OUT channel connection
+	inReader          *bufio.Reader
+	outReader         *bufio.Reader
+	outBodyReader     io.Reader // HTTP response body reader (handles chunked decoding)
 	virtualConnCookie RTSCookie
 	inChannelCookie   RTSCookie
 	outChannelCookie  RTSCookie
@@ -427,10 +430,10 @@ func (t *Transport) RPCBind(interfaceUUID [16]byte, major, minor uint16) error {
 	buf := new(bytes.Buffer)
 
 	// Common header
-	buf.WriteByte(5)    // Version
-	buf.WriteByte(0)    // VersionMinor
-	buf.WriteByte(11)   // PacketType: Bind
-	buf.WriteByte(0x03) // PacketFlags: FirstFrag | LastFrag
+	buf.WriteByte(5)                 // Version
+	buf.WriteByte(0)                 // VersionMinor
+	buf.WriteByte(11)                // PacketType: Bind
+	buf.WriteByte(0x03)              // PacketFlags: FirstFrag | LastFrag
 	buf.Write([]byte{0x10, 0, 0, 0}) // DataRep: Little endian
 
 	// Will fill FragLength later
@@ -446,19 +449,19 @@ func (t *Transport) RPCBind(interfaceUUID [16]byte, major, minor uint16) error {
 	binary.Write(buf, binary.LittleEndian, uint32(0))    // AssocGroup
 
 	// Context list
-	buf.WriteByte(1) // NumContexts
-	buf.WriteByte(0) // Reserved
+	buf.WriteByte(1)                                  // NumContexts
+	buf.WriteByte(0)                                  // Reserved
 	binary.Write(buf, binary.LittleEndian, uint16(0)) // Reserved
 
 	// Context item
-	binary.Write(buf, binary.LittleEndian, uint16(0)) // ContextID
-	buf.WriteByte(1) // NumTransItems
-	buf.WriteByte(0) // Reserved
-	buf.Write(interfaceUUID[:])                           // Interface UUID
-	binary.Write(buf, binary.LittleEndian, major)         // Interface version
-	binary.Write(buf, binary.LittleEndian, minor)         // Interface minor version
+	binary.Write(buf, binary.LittleEndian, uint16(0))                                                                 // ContextID
+	buf.WriteByte(1)                                                                                                  // NumTransItems
+	buf.WriteByte(0)                                                                                                  // Reserved
+	buf.Write(interfaceUUID[:])                                                                                       // Interface UUID
+	binary.Write(buf, binary.LittleEndian, major)                                                                     // Interface version
+	binary.Write(buf, binary.LittleEndian, minor)                                                                     // Interface minor version
 	buf.Write([]byte{0x04, 0x5d, 0x88, 0x8a, 0xeb, 0x1c, 0xc9, 0x11, 0x9f, 0xe8, 0x08, 0x00, 0x2b, 0x10, 0x48, 0x60}) // NDR transfer syntax
-	binary.Write(buf, binary.LittleEndian, uint32(2))     // Transfer syntax version
+	binary.Write(buf, binary.LittleEndian, uint32(2))                                                                 // Transfer syntax version
 
 	// Update FragLength
 	data := buf.Bytes()
@@ -508,16 +511,16 @@ func (t *Transport) RPCCall(opNum uint16, data []byte, callID uint32) ([]byte, e
 	buf := new(bytes.Buffer)
 
 	// Common header
-	buf.WriteByte(5)    // Version
-	buf.WriteByte(0)    // VersionMinor
-	buf.WriteByte(0)    // PacketType: Request
-	buf.WriteByte(0x03) // PacketFlags: FirstFrag | LastFrag
+	buf.WriteByte(5)                 // Version
+	buf.WriteByte(0)                 // VersionMinor
+	buf.WriteByte(0)                 // PacketType: Request
+	buf.WriteByte(0x03)              // PacketFlags: FirstFrag | LastFrag
 	buf.Write([]byte{0x10, 0, 0, 0}) // DataRep: Little endian
 
 	fragLen := uint16(24 + len(data)) // Header(16) + ReqHeader(8) + Data
 	binary.Write(buf, binary.LittleEndian, fragLen)
-	binary.Write(buf, binary.LittleEndian, uint16(0))  // AuthLength
-	binary.Write(buf, binary.LittleEndian, callID)     // CallID
+	binary.Write(buf, binary.LittleEndian, uint16(0)) // AuthLength
+	binary.Write(buf, binary.LittleEndian, callID)    // CallID
 
 	// Request header
 	binary.Write(buf, binary.LittleEndian, uint32(len(data))) // AllocHint

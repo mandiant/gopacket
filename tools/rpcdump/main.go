@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -159,7 +162,7 @@ func dumpViaTCP(host string, port int) ([]epmapper.Endpoint, error) {
 }
 
 func dumpViaSMB(host string, port int, domain, username, password, lmHash, ntHash string) ([]epmapper.Endpoint, error) {
-	// TODO: Implement SMB transport for epmapper
+	// Future enhancement: Implement SMB transport for epmapper
 	// For now, just try TCP on port 135
 	return dumpViaTCP(host, 135)
 }

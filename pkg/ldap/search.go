@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package ldap
 
 import (
 	"fmt"
-	
+
 	goldap "github.com/go-ldap/ldap/v3"
 )
 
@@ -16,12 +19,12 @@ func (c *Client) Search(baseDN string, filter string, attributes []string) (*gol
 		baseDN,
 		goldap.ScopeWholeSubtree, // Scope
 		goldap.NeverDerefAliases, // DerefAliases
-		0,                      // SizeLimit (0 = no limit)
-		0,                      // TimeLimit (0 = no limit)
-		false,                  // TypesOnly
-		filter,                 // Filter
-		attributes,             // Attributes
-		nil,                    // Controls
+		0,                        // SizeLimit (0 = no limit)
+		0,                        // TimeLimit (0 = no limit)
+		false,                    // TypesOnly
+		filter,                   // Filter
+		attributes,               // Attributes
+		nil,                      // Controls
 	)
 
 	return c.Conn.Search(searchRequest)

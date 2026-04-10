@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package ldap
 
 import (
@@ -7,13 +10,13 @@ import (
 
 // UserSPN represents a user account with Service Principal Names set.
 type UserSPN struct {
-	Username    string
-	DN          string
-	SPNs        []string
-	MemberOf    string
-	PwdLastSet  time.Time
-	LastLogon   time.Time
-	Delegation  string
+	Username   string
+	DN         string
+	SPNs       []string
+	MemberOf   string
+	PwdLastSet time.Time
+	LastLogon  time.Time
+	Delegation string
 }
 
 // SPNQueryOptions controls how the SPN user search is performed.

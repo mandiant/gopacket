@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -160,9 +163,9 @@ func netShareEnumAll(client *dcerpc.Client) ([]shareInfo, error) {
 	serverName := utf16.Encode([]rune("\\\\*"))
 	serverName = append(serverName, 0)
 	count := uint32(len(serverName))
-	binary.Write(buf, binary.LittleEndian, count)    // MaxCount
+	binary.Write(buf, binary.LittleEndian, count)     // MaxCount
 	binary.Write(buf, binary.LittleEndian, uint32(0)) // Offset
-	binary.Write(buf, binary.LittleEndian, count)    // ActualCount
+	binary.Write(buf, binary.LittleEndian, count)     // ActualCount
 	for _, c := range serverName {
 		binary.Write(buf, binary.LittleEndian, c)
 	}
@@ -187,7 +190,7 @@ func netShareEnumAll(client *dcerpc.Client) ([]shareInfo, error) {
 
 	// ResumeHandle (pointer)
 	binary.Write(buf, binary.LittleEndian, uint32(0x20000)) // Ptr
-	binary.Write(buf, binary.LittleEndian, uint32(0))        // Value = 0
+	binary.Write(buf, binary.LittleEndian, uint32(0))       // Value = 0
 
 	resp, err := client.Call(opNetShareEnumAll, buf.Bytes())
 	if err != nil {

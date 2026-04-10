@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // Package bkrp implements the BackupKey Remote Protocol (MS-BKRP)
 // for retrieving domain backup keys used to decrypt DPAPI secrets.
 package bkrp

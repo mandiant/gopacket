@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package samr
 
 import (
@@ -28,18 +31,18 @@ const MinorVersion = 0
 
 // Operation numbers
 const (
-	OpSamrCloseHandle                   = 1
-	OpSamrLookupDomainInSamServer       = 5
-	OpSamrEnumerateDomainsInSamServer   = 6
-	OpSamrOpenDomain                    = 7
-	OpSamrLookupNamesInDomain           = 17
-	OpSamrOpenUser                      = 34
-	OpSamrDeleteUser                    = 35
-	OpSamrSetInformationUser            = 37
-	OpSamrChangePasswordUser            = 38
-	OpSamrCreateUser2InDomain           = 50
-	OpSamrUnicodeChangePasswordUser2    = 55
-	OpSamrConnect5                      = 64
+	OpSamrCloseHandle                 = 1
+	OpSamrLookupDomainInSamServer     = 5
+	OpSamrEnumerateDomainsInSamServer = 6
+	OpSamrOpenDomain                  = 7
+	OpSamrLookupNamesInDomain         = 17
+	OpSamrOpenUser                    = 34
+	OpSamrDeleteUser                  = 35
+	OpSamrSetInformationUser          = 37
+	OpSamrChangePasswordUser          = 38
+	OpSamrCreateUser2InDomain         = 50
+	OpSamrUnicodeChangePasswordUser2  = 55
+	OpSamrConnect5                    = 64
 )
 
 // SAM Account type flags (for SamrCreateUser2InDomain AccountType parameter)
@@ -719,8 +722,9 @@ func (s *SamrClient) SetUserPassword(username, newPassword string) error {
 // ChangeUserPassword changes a user's password using the old password for authentication.
 // This uses SamrUnicodeChangePasswordUser2 which doesn't require a user handle.
 // Structure order per MS-SAMR 3.1.5.10.3:
-//   ServerName, UserName, NewPasswordEncryptedWithOldNt, OldNtOwfPasswordEncryptedWithNewNt,
-//   LmPresent, NewPasswordEncryptedWithOldLm, OldLmOwfPasswordEncryptedWithNewNt
+//
+//	ServerName, UserName, NewPasswordEncryptedWithOldNt, OldNtOwfPasswordEncryptedWithNewNt,
+//	LmPresent, NewPasswordEncryptedWithOldLm, OldLmOwfPasswordEncryptedWithNewNt
 func (s *SamrClient) ChangeUserPassword(username, oldPassword, newPassword string) error {
 	// Pre-compute encrypted values
 	newPwdEncrypted, err := encryptPasswordWithOldNtHash(newPassword, oldPassword)
@@ -1165,35 +1169,35 @@ const (
 // UserAccountControl flags (SAMR specific - different from ADS_UF flags)
 // See MS-SAMR 2.2.1.12 USER_ACCOUNT_CONTROL Codes
 const (
-	USER_ACCOUNT_DISABLED       = 0x00000001
-	USER_PASSWORD_NOT_REQUIRED  = 0x00000004
-	USER_DONT_EXPIRE_PASSWORD   = 0x00000200 // Note: different from ADS_UF_DONT_EXPIRE_PASSWD (0x10000)
+	USER_ACCOUNT_DISABLED      = 0x00000001
+	USER_PASSWORD_NOT_REQUIRED = 0x00000004
+	USER_DONT_EXPIRE_PASSWORD  = 0x00000200 // Note: different from ADS_UF_DONT_EXPIRE_PASSWD (0x10000)
 )
 
 // UserAllInfo contains all user information
 type UserAllInfo struct {
-	LastLogon             int64
-	LastLogoff            int64
-	PasswordLastSet       int64
-	AccountExpires        int64
-	PasswordCanChange     int64
-	PasswordMustChange    int64
-	UserName              string
-	FullName              string
-	HomeDirectory         string
-	HomeDirectoryDrive    string
-	ScriptPath            string
-	ProfilePath           string
-	AdminComment          string
-	WorkStations          string
-	UserComment           string
-	Parameters            string
-	PrimaryGroupID        uint32
-	UserAccountControl    uint32
-	CountryCode           uint16
-	CodePage              uint16
-	BadPasswordCount      uint16
-	LogonCount            uint16
+	LastLogon          int64
+	LastLogoff         int64
+	PasswordLastSet    int64
+	AccountExpires     int64
+	PasswordCanChange  int64
+	PasswordMustChange int64
+	UserName           string
+	FullName           string
+	HomeDirectory      string
+	HomeDirectoryDrive string
+	ScriptPath         string
+	ProfilePath        string
+	AdminComment       string
+	WorkStations       string
+	UserComment        string
+	Parameters         string
+	PrimaryGroupID     uint32
+	UserAccountControl uint32
+	CountryCode        uint16
+	CodePage           uint16
+	BadPasswordCount   uint16
+	LogonCount         uint16
 }
 
 // QueryUserInfo queries detailed information about a user
@@ -1431,7 +1435,6 @@ func readNDRString(data []byte, offset int) (string, int) {
 
 	return str, offset
 }
-
 
 // DomainSID returns the raw binary domain SID.
 func (s *SamrClient) DomainSID() []byte {
@@ -1981,9 +1984,9 @@ func (s *SamrClient) LookupIdsInDomain(domainHandle []byte, rids []uint32) ([]st
 	binary.Write(buf, binary.LittleEndian, uint32(len(rids)))
 
 	// RelativeIds: conformant varying array [size_is(1000), length_is(Count)]
-	binary.Write(buf, binary.LittleEndian, uint32(1000))       // MaxCount
-	binary.Write(buf, binary.LittleEndian, uint32(0))           // Offset
-	binary.Write(buf, binary.LittleEndian, uint32(len(rids)))   // ActualCount
+	binary.Write(buf, binary.LittleEndian, uint32(1000))      // MaxCount
+	binary.Write(buf, binary.LittleEndian, uint32(0))         // Offset
+	binary.Write(buf, binary.LittleEndian, uint32(len(rids))) // ActualCount
 
 	for _, rid := range rids {
 		binary.Write(buf, binary.LittleEndian, rid)

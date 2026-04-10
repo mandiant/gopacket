@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package kerberos
 
 import (
@@ -29,8 +32,8 @@ func BuildKeytabFromNTHash(username, realm, nthash string) (*keytab.Keytab, erro
 	var buf bytes.Buffer
 
 	// Header
-	buf.WriteByte(0x05)       // First byte is always 5
-	buf.WriteByte(0x02)       // Version 2 (big-endian)
+	buf.WriteByte(0x05) // First byte is always 5
+	buf.WriteByte(0x02) // Version 2 (big-endian)
 
 	// Build entry
 	entryBuf := buildKeytabEntry(username, realm, hashBytes)

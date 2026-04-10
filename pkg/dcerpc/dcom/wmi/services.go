@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package wmi
 
 import (
@@ -57,19 +60,8 @@ func (s *IWbemServices) GetObject(objectPath string) (*IWbemClassObject, error) 
 //   - inParams: serialized method parameters
 func (s *IWbemServices) ExecMethod(objectPath, methodName string, inParams []byte) (*ExecMethodResult, error) {
 	// The IWbemServices IPID was obtained via NTLMLogin.
-	// Check if we already have a presentation context for IWbemServices.
-	// TODO: AlterContext method not yet implemented on Client
-	// if s.iface.Client != nil {
-	// 	if _, ok := s.iface.Client.GetContextID(IID_IWbemServices); !ok {
-	// 		fmt.Printf("[D] ExecMethod: calling AlterContext to IWbemServices on existing client\n")
-	// 		if err := s.iface.Client.AlterContext(IID_IWbemServices, 0, 0); err != nil {
-	// 			return nil, fmt.Errorf("failed to alter context for IWbemServices: %v", err)
-	// 		}
-	// 		fmt.Printf("[D] ExecMethod: AlterContext succeeded\n")
-	// 	} else {
-	// 		fmt.Printf("[D] ExecMethod: IWbemServices context already exists, skipping AlterContext\n")
-	// 	}
-	// }
+	// Note: AlterContext method not yet implemented on Client; once available,
+	// callers should alter to IID_IWbemServices on existing clients.
 
 	buf := new(bytes.Buffer)
 

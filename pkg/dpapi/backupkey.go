@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package dpapi
 
 import (
@@ -34,12 +37,12 @@ var (
 
 // BackupKey represents a domain backup key
 type BackupKey struct {
-	Version    uint32
-	Magic      uint32
-	KeyLength  uint32
+	Version     uint32
+	Magic       uint32
+	KeyLength   uint32
 	Certificate []byte
-	PrivateKey *rsa.PrivateKey
-	PVKData    []byte
+	PrivateKey  *rsa.PrivateKey
+	PVKData     []byte
 }
 
 // PVKFileHeader represents the PVK file header
@@ -70,12 +73,12 @@ type PrivateKeyBlob struct {
 		BitLen uint32
 		PubExp uint32
 	}
-	Modulus        []byte
-	Prime1         []byte // p
-	Prime2         []byte // q
-	Exponent1      []byte // d mod (p-1)
-	Exponent2      []byte // d mod (q-1)
-	Coefficient    []byte // q^-1 mod p
+	Modulus         []byte
+	Prime1          []byte // p
+	Prime2          []byte // q
+	Exponent1       []byte // d mod (p-1)
+	Exponent2       []byte // d mod (q-1)
+	Coefficient     []byte // q^-1 mod p
 	PrivateExponent []byte // d
 }
 
@@ -263,7 +266,7 @@ func (bk *BackupKey) ToPVK() []byte {
 	if bk.PVKData != nil {
 		return bk.PVKData
 	}
-	// TODO: Implement conversion from RSA key to PVK
+	// Future enhancement: Implement conversion from RSA key to PVK
 	return nil
 }
 

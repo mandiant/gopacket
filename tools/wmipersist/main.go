@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -396,7 +399,7 @@ func main() {
 		checkError("Removing FilterToConsumerBinding "+*name, ret, err)
 	} else {
 		// Install: Create ActiveScriptEventConsumer
-		consumerObj, err := spawnInstance(wmiCtx, svcs, version,"ActiveScriptEventConsumer", wmio.Values{
+		consumerObj, err := spawnInstance(wmiCtx, svcs, version, "ActiveScriptEventConsumer", wmio.Values{
 			"Name":            *name,
 			"ScriptingEngine": "VBScript",
 			"CreatorSID":      creatorSID,
@@ -412,7 +415,7 @@ func main() {
 
 		if *filter != "" {
 			// Filter mode: create __EventFilter with WQL filter
-			filterObj, err := spawnInstance(wmiCtx, svcs, version,"__EventFilter", wmio.Values{
+			filterObj, err := spawnInstance(wmiCtx, svcs, version, "__EventFilter", wmio.Values{
 				"Name":           "EF_" + *name,
 				"CreatorSID":     creatorSID,
 				"Query":          *filter,
@@ -435,7 +438,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			timerObj, err := spawnInstance(wmiCtx, svcs, version,"__IntervalTimerInstruction", wmio.Values{
+			timerObj, err := spawnInstance(wmiCtx, svcs, version, "__IntervalTimerInstruction", wmio.Values{
 				"TimerId":               "TI_" + *name,
 				"IntervalBetweenEvents": uint32(timerMs),
 			})
@@ -447,7 +450,7 @@ func main() {
 			ret, err = putInstance(wmiCtx, svcs, version, timerObj)
 			checkError("Adding IntervalTimerInstruction", ret, err)
 
-			filterObj, err := spawnInstance(wmiCtx, svcs, version,"__EventFilter", wmio.Values{
+			filterObj, err := spawnInstance(wmiCtx, svcs, version, "__EventFilter", wmio.Values{
 				"Name":           "EF_" + *name,
 				"CreatorSID":     creatorSID,
 				"Query":          fmt.Sprintf(`select * from __TimerEvent where TimerID = "TI_%s" `, *name),
@@ -464,7 +467,7 @@ func main() {
 		}
 
 		// Create FilterToConsumerBinding
-		bindingObj, err := spawnInstance(wmiCtx, svcs, version,"__FilterToConsumerBinding", wmio.Values{
+		bindingObj, err := spawnInstance(wmiCtx, svcs, version, "__FilterToConsumerBinding", wmio.Values{
 			"Filter":     fmt.Sprintf(`__EventFilter.Name="EF_%s"`, *name),
 			"Consumer":   fmt.Sprintf(`ActiveScriptEventConsumer.Name="%s"`, *name),
 			"CreatorSID": creatorSID,
@@ -537,20 +540,20 @@ func checkError(banner string, ret int32, err error) {
 
 // wmiStatusToWBEM maps go-msrpc WMI status names to Impacket-style WBEM names
 var wmiStatusToWBEM = map[string]string{
-	"StatusNotFound":           "WBEM_E_NOT_FOUND",
-	"StatusAccessDenied":       "WBEM_E_ACCESS_DENIED",
-	"StatusFailed":             "WBEM_E_FAILED",
-	"StatusAlreadyExists":      "WBEM_E_ALREADY_EXISTS",
-	"StatusInvalidParameter":   "WBEM_E_INVALID_PARAMETER",
-	"StatusInvalidClass":       "WBEM_E_INVALID_CLASS",
-	"StatusInvalidObject":      "WBEM_E_INVALID_OBJECT",
-	"StatusInvalidQuery":       "WBEM_E_INVALID_QUERY",
-	"StatusInvalidNamespace":   "WBEM_E_INVALID_NAMESPACE",
-	"StatusProviderNotFound":   "WBEM_E_PROVIDER_NOT_FOUND",
-	"StatusProviderFailure":    "WBEM_E_PROVIDER_FAILURE",
-	"StatusNotSupported":       "WBEM_E_NOT_SUPPORTED",
-	"StatusOutOfMemory":        "WBEM_E_OUT_OF_MEMORY",
-	"StatusPrivilegeNotHeld":   "WBEM_E_PRIVILEGE_NOT_HELD",
+	"StatusNotFound":         "WBEM_E_NOT_FOUND",
+	"StatusAccessDenied":     "WBEM_E_ACCESS_DENIED",
+	"StatusFailed":           "WBEM_E_FAILED",
+	"StatusAlreadyExists":    "WBEM_E_ALREADY_EXISTS",
+	"StatusInvalidParameter": "WBEM_E_INVALID_PARAMETER",
+	"StatusInvalidClass":     "WBEM_E_INVALID_CLASS",
+	"StatusInvalidObject":    "WBEM_E_INVALID_OBJECT",
+	"StatusInvalidQuery":     "WBEM_E_INVALID_QUERY",
+	"StatusInvalidNamespace": "WBEM_E_INVALID_NAMESPACE",
+	"StatusProviderNotFound": "WBEM_E_PROVIDER_NOT_FOUND",
+	"StatusProviderFailure":  "WBEM_E_PROVIDER_FAILURE",
+	"StatusNotSupported":     "WBEM_E_NOT_SUPPORTED",
+	"StatusOutOfMemory":      "WBEM_E_OUT_OF_MEMORY",
+	"StatusPrivilegeNotHeld": "WBEM_E_PRIVILEGE_NOT_HELD",
 }
 
 // extractWMIError tries to extract a WMI status name and code from an error string

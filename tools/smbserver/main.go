@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -23,8 +26,8 @@ import (
 )
 
 var (
-	logger    *log.Logger
-	logFile   *os.File
+	logger  *log.Logger
+	logFile *os.File
 )
 
 // initLogging sets up the logger with optional timestamps and file output
@@ -152,20 +155,20 @@ const (
 
 // DesiredAccess flags
 const (
-	DELETE                 uint32 = 0x00010000
-	FILE_READ_DATA         uint32 = 0x00000001
-	FILE_WRITE_DATA        uint32 = 0x00000002
-	FILE_APPEND_DATA       uint32 = 0x00000004
-	FILE_READ_ATTRIBUTES   uint32 = 0x00000080
-	FILE_WRITE_ATTRIBUTES  uint32 = 0x00000100
-	FILE_LIST_DIRECTORY    uint32 = 0x00000001
-	FILE_ADD_FILE          uint32 = 0x00000002
-	FILE_ADD_SUBDIRECTORY  uint32 = 0x00000004
-	SYNCHRONIZE            uint32 = 0x00100000
-	GENERIC_READ           uint32 = 0x80000000
-	GENERIC_WRITE          uint32 = 0x40000000
-	GENERIC_EXECUTE        uint32 = 0x20000000
-	GENERIC_ALL            uint32 = 0x10000000
+	DELETE                uint32 = 0x00010000
+	FILE_READ_DATA        uint32 = 0x00000001
+	FILE_WRITE_DATA       uint32 = 0x00000002
+	FILE_APPEND_DATA      uint32 = 0x00000004
+	FILE_READ_ATTRIBUTES  uint32 = 0x00000080
+	FILE_WRITE_ATTRIBUTES uint32 = 0x00000100
+	FILE_LIST_DIRECTORY   uint32 = 0x00000001
+	FILE_ADD_FILE         uint32 = 0x00000002
+	FILE_ADD_SUBDIRECTORY uint32 = 0x00000004
+	SYNCHRONIZE           uint32 = 0x00100000
+	GENERIC_READ          uint32 = 0x80000000
+	GENERIC_WRITE         uint32 = 0x40000000
+	GENERIC_EXECUTE       uint32 = 0x20000000
+	GENERIC_ALL           uint32 = 0x10000000
 )
 
 // SMB2 Header flags
@@ -210,13 +213,13 @@ type Share struct {
 
 // Server represents the SMB server
 type Server struct {
-	shares       map[string]*Share // Map of share name (uppercase) -> Share
-	sharesMu     sync.RWMutex
-	listener     net.Listener
-	sessions     map[uint64]*Session
-	sessionMu    sync.RWMutex
-	nextSession  uint64
-	serverGUID   [16]byte
+	shares      map[string]*Share // Map of share name (uppercase) -> Share
+	sharesMu    sync.RWMutex
+	listener    net.Listener
+	sessions    map[uint64]*Session
+	sessionMu   sync.RWMutex
+	nextSession uint64
+	serverGUID  [16]byte
 
 	// Authentication
 	username string
@@ -231,16 +234,16 @@ type Server struct {
 
 // Session represents an SMB session
 type Session struct {
-	id               uint64
-	conn             net.Conn
-	authenticated    bool
-	username         string
-	domain           string
-	challenge        []byte
-	treeConnects     map[uint32]*TreeConnect
-	nextTreeID       uint32
-	openFiles        map[string]*OpenFile
-	nextFileID       uint64
+	id                uint64
+	conn              net.Conn
+	authenticated     bool
+	username          string
+	domain            string
+	challenge         []byte
+	treeConnects      map[uint32]*TreeConnect
+	nextTreeID        uint32
+	openFiles         map[string]*OpenFile
+	nextFileID        uint64
 	negotiatedDialect uint16
 }
 
@@ -278,9 +281,9 @@ type FileLock struct {
 
 // NamedPipeState tracks DCE/RPC state for named pipes
 type NamedPipeState struct {
-	bound         bool
-	callID        uint32
-	contextID     uint16
+	bound           bool
+	callID          uint32
+	contextID       uint16
 	pendingResponse []byte
 }
 
@@ -772,19 +775,19 @@ func (s *Server) buildSMB2NegotiateResponse(session *Session, pkt []byte) []byte
 
 	// SMB2 Header
 	copy(resp[0:4], []byte{0xFE, 'S', 'M', 'B'})
-	binary.LittleEndian.PutUint16(resp[4:6], 64)      // StructureSize
-	binary.LittleEndian.PutUint16(resp[6:8], 0)       // CreditCharge
-	binary.LittleEndian.PutUint32(resp[8:12], 0)      // Status
+	binary.LittleEndian.PutUint16(resp[4:6], 64) // StructureSize
+	binary.LittleEndian.PutUint16(resp[6:8], 0)  // CreditCharge
+	binary.LittleEndian.PutUint32(resp[8:12], 0) // Status
 	binary.LittleEndian.PutUint16(resp[12:14], SMB2_NEGOTIATE)
-	binary.LittleEndian.PutUint16(resp[14:16], 1)     // CreditResponse
+	binary.LittleEndian.PutUint16(resp[14:16], 1) // CreditResponse
 	binary.LittleEndian.PutUint32(resp[16:20], SMB2_FLAGS_SERVER_TO_REDIR)
 
 	// Negotiate Response (65 bytes structure size)
-	binary.LittleEndian.PutUint16(resp[64:66], 65)               // StructureSize
+	binary.LittleEndian.PutUint16(resp[64:66], 65)                             // StructureSize
 	binary.LittleEndian.PutUint16(resp[66:68], SMB2_NEGOTIATE_SIGNING_ENABLED) // SecurityMode (signing enabled but not required)
 	binary.LittleEndian.PutUint16(resp[68:70], session.negotiatedDialect)      // DialectRevision
-	binary.LittleEndian.PutUint16(resp[70:72], 0)                // Reserved
-	copy(resp[72:88], s.serverGUID[:])                           // ServerGUID
+	binary.LittleEndian.PutUint16(resp[70:72], 0)                              // Reserved
+	copy(resp[72:88], s.serverGUID[:])                                         // ServerGUID
 
 	// Set capabilities based on dialect
 	var capabilities uint32 = 0
@@ -793,13 +796,13 @@ func (s *Server) buildSMB2NegotiateResponse(session *Session, pkt []byte) []byte
 		capabilities = SMB2_GLOBAL_CAP_LARGE_MTU
 	}
 	binary.LittleEndian.PutUint32(resp[88:92], capabilities)
-	binary.LittleEndian.PutUint32(resp[92:96], 65536)             // MaxTransactSize
-	binary.LittleEndian.PutUint32(resp[96:100], 65536)           // MaxReadSize
-	binary.LittleEndian.PutUint32(resp[100:104], 65536)          // MaxWriteSize
+	binary.LittleEndian.PutUint32(resp[92:96], 65536)   // MaxTransactSize
+	binary.LittleEndian.PutUint32(resp[96:100], 65536)  // MaxReadSize
+	binary.LittleEndian.PutUint32(resp[100:104], 65536) // MaxWriteSize
 	// SystemTime and ServerStartTime at 104-120
-	binary.LittleEndian.PutUint64(resp[104:112], timeToFiletime(time.Now())) // SystemTime
-	binary.LittleEndian.PutUint64(resp[112:120], timeToFiletime(time.Now())) // ServerStartTime
-	binary.LittleEndian.PutUint16(resp[120:122], 128)            // SecurityBufferOffset (0x80)
+	binary.LittleEndian.PutUint64(resp[104:112], timeToFiletime(time.Now()))  // SystemTime
+	binary.LittleEndian.PutUint64(resp[112:120], timeToFiletime(time.Now()))  // ServerStartTime
+	binary.LittleEndian.PutUint16(resp[120:122], 128)                         // SecurityBufferOffset (0x80)
 	binary.LittleEndian.PutUint16(resp[122:124], uint16(len(securityBuffer))) // SecurityBufferLength
 	// NegotiateContextOffset at 124-127 (leave as zero for SMB 2.1)
 
@@ -971,10 +974,10 @@ func (s *Server) buildNTLMChallenge(challenge []byte) []byte {
 	binary.LittleEndian.PutUint16(msg[42:44], uint16(len(targetInfoBytes)))
 	binary.LittleEndian.PutUint32(msg[44:48], targetInfoOffset)
 	// Version (8 bytes at 48-55)
-	msg[48] = 6 // Major
-	msg[49] = 1 // Minor
+	msg[48] = 6                                     // Major
+	msg[49] = 1                                     // Minor
 	binary.LittleEndian.PutUint16(msg[50:52], 7600) // Build
-	msg[55] = 15 // NTLM revision
+	msg[55] = 15                                    // NTLM revision
 
 	// Target name
 	copy(msg[56:], targetNameUTF16)
@@ -1156,7 +1159,7 @@ func (s *Server) buildSessionSetupResponse(session *Session, messageID uint64, s
 	binary.LittleEndian.PutUint16(resp[64:66], 9) // StructureSize
 	// Set IS_GUEST flag (0x0001) - guest sessions don't require signing
 	binary.LittleEndian.PutUint16(resp[66:68], 0x0001) // SessionFlags = IS_GUEST
-	binary.LittleEndian.PutUint16(resp[68:70], 72) // SecurityBufferOffset
+	binary.LittleEndian.PutUint16(resp[68:70], 72)     // SecurityBufferOffset
 	binary.LittleEndian.PutUint16(resp[70:72], uint16(len(secBuffer)))
 
 	copy(resp[72:], secBuffer)
@@ -1230,15 +1233,15 @@ func (s *Server) buildTreeConnectResponse(session *Session, messageID uint64, tr
 
 	// SMB2 Header
 	copy(resp[0:4], []byte{0xFE, 'S', 'M', 'B'})
-	binary.LittleEndian.PutUint16(resp[4:6], 64)      // StructureSize
-	binary.LittleEndian.PutUint16(resp[6:8], 0)       // CreditCharge
+	binary.LittleEndian.PutUint16(resp[4:6], 64) // StructureSize
+	binary.LittleEndian.PutUint16(resp[6:8], 0)  // CreditCharge
 	binary.LittleEndian.PutUint32(resp[8:12], STATUS_SUCCESS)
 	binary.LittleEndian.PutUint16(resp[12:14], SMB2_TREE_CONNECT)
-	binary.LittleEndian.PutUint16(resp[14:16], 32)    // CreditResponse
+	binary.LittleEndian.PutUint16(resp[14:16], 32) // CreditResponse
 	binary.LittleEndian.PutUint32(resp[16:20], SMB2_FLAGS_SERVER_TO_REDIR)
-	binary.LittleEndian.PutUint32(resp[20:24], 0)     // NextCommand
+	binary.LittleEndian.PutUint32(resp[20:24], 0) // NextCommand
 	binary.LittleEndian.PutUint64(resp[24:32], messageID)
-	binary.LittleEndian.PutUint32(resp[32:36], 0)     // Reserved
+	binary.LittleEndian.PutUint32(resp[32:36], 0) // Reserved
 	binary.LittleEndian.PutUint32(resp[36:40], treeID)
 	binary.LittleEndian.PutUint64(resp[40:48], session.id)
 	// Signature at 48-63 remains zero
@@ -1527,8 +1530,8 @@ func (s *Server) buildNamedPipeCreateResponse(session *Session, messageID uint64
 
 	// Create Response
 	binary.LittleEndian.PutUint16(resp[64:66], 89) // StructureSize
-	resp[66] = 0x00                                 // OplockLevel = None
-	resp[67] = 0x00                                 // Flags
+	resp[66] = 0x00                                // OplockLevel = None
+	resp[67] = 0x00                                // Flags
 
 	// File times (use current time)
 	now := timeToFiletime(time.Now())
@@ -1563,15 +1566,15 @@ func (s *Server) buildCreateResponse(session *Session, messageID uint64, treeID 
 
 	// Create Response
 	binary.LittleEndian.PutUint16(resp[64:66], 89) // StructureSize
-	resp[66] = 0x01                                 // OplockLevel
-	resp[67] = 0x01                                 // Flags
+	resp[66] = 0x01                                // OplockLevel
+	resp[67] = 0x01                                // Flags
 
 	// File times (simplified - use current time)
 	now := timeToFiletime(time.Now())
-	binary.LittleEndian.PutUint64(resp[72:80], now)   // CreationTime
-	binary.LittleEndian.PutUint64(resp[80:88], now)   // LastAccessTime
-	binary.LittleEndian.PutUint64(resp[88:96], now)   // LastWriteTime
-	binary.LittleEndian.PutUint64(resp[96:104], now)  // ChangeTime
+	binary.LittleEndian.PutUint64(resp[72:80], now)                   // CreationTime
+	binary.LittleEndian.PutUint64(resp[80:88], now)                   // LastAccessTime
+	binary.LittleEndian.PutUint64(resp[88:96], now)                   // LastWriteTime
+	binary.LittleEndian.PutUint64(resp[96:104], now)                  // ChangeTime
 	binary.LittleEndian.PutUint64(resp[112:120], uint64(info.Size())) // EndOfFile
 	binary.LittleEndian.PutUint64(resp[104:112], uint64(info.Size())) // AllocationSize
 
@@ -1705,7 +1708,7 @@ func (s *Server) handleRead(session *Session, pkt []byte, messageID uint64, tree
 	binary.LittleEndian.PutUint64(resp[40:48], session.id)
 
 	binary.LittleEndian.PutUint16(resp[64:66], 17) // StructureSize
-	resp[66] = 0x50                                 // DataOffset
+	resp[66] = 0x50                                // DataOffset
 	binary.LittleEndian.PutUint32(resp[68:72], uint32(n))
 	copy(resp[80:], data)
 
@@ -1912,12 +1915,12 @@ func (s *Server) buildDCERPCBindAck(callID uint32, contextID uint16) []byte {
 	resp[6] = 0x00
 	resp[7] = 0x00
 	binary.LittleEndian.PutUint16(resp[8:10], uint16(headerLen)) // Frag length
-	binary.LittleEndian.PutUint16(resp[10:12], 0)                 // Auth length
+	binary.LittleEndian.PutUint16(resp[10:12], 0)                // Auth length
 	binary.LittleEndian.PutUint32(resp[12:16], callID)
 
 	// BIND_ACK specific (8 bytes at offset 16)
-	binary.LittleEndian.PutUint16(resp[16:18], 4280) // Max transmit frag
-	binary.LittleEndian.PutUint16(resp[18:20], 4280) // Max receive frag
+	binary.LittleEndian.PutUint16(resp[16:18], 4280)   // Max transmit frag
+	binary.LittleEndian.PutUint16(resp[18:20], 4280)   // Max receive frag
 	binary.LittleEndian.PutUint32(resp[20:24], 0x53f0) // Assoc group (non-zero)
 
 	// Secondary address (at offset 24)
@@ -1929,14 +1932,14 @@ func (s *Server) buildDCERPCBindAck(callID uint32, contextID uint16) []byte {
 	offset += secAddrLen + secAddrPadding
 
 	// Number of results (1 byte + 3 bytes padding for alignment)
-	resp[offset] = 1 // n_results
+	resp[offset] = 1   // n_results
 	resp[offset+1] = 0 // reserved
 	resp[offset+2] = 0 // reserved
 	resp[offset+3] = 0 // reserved
 	offset += 4
 
 	// Context result: acceptance (24 bytes)
-	binary.LittleEndian.PutUint16(resp[offset:offset+2], 0) // Result = acceptance
+	binary.LittleEndian.PutUint16(resp[offset:offset+2], 0)   // Result = acceptance
 	binary.LittleEndian.PutUint16(resp[offset+2:offset+4], 0) // Reason = not specified
 	// Transfer syntax (NDR UUID + version)
 	copy(resp[offset+4:offset+20], NDR_UUID)
@@ -2131,8 +2134,8 @@ func (s *Server) buildDCERPCResponse(callID uint32, stubData []byte) []byte {
 	binary.Write(bytes.NewBuffer(resp[16:16]), binary.LittleEndian, uint32(len(stubData))) // Alloc hint
 	binary.LittleEndian.PutUint32(resp[16:20], uint32(len(stubData)))
 	binary.LittleEndian.PutUint16(resp[20:22], 0) // Context ID
-	resp[22] = 0 // Cancel count
-	resp[23] = 0 // Reserved
+	resp[22] = 0                                  // Cancel count
+	resp[23] = 0                                  // Reserved
 
 	copy(resp[24:], stubData)
 
@@ -2470,9 +2473,9 @@ func (s *Server) buildFileBasicInfo(info os.FileInfo) []byte {
 func (s *Server) buildFileStandardInfo(info os.FileInfo, of *OpenFile) []byte {
 	data := make([]byte, 24)
 
-	binary.LittleEndian.PutUint64(data[0:8], uint64(info.Size()))   // AllocationSize
-	binary.LittleEndian.PutUint64(data[8:16], uint64(info.Size()))  // EndOfFile
-	binary.LittleEndian.PutUint32(data[16:20], 1)                    // NumberOfLinks
+	binary.LittleEndian.PutUint64(data[0:8], uint64(info.Size()))  // AllocationSize
+	binary.LittleEndian.PutUint64(data[8:16], uint64(info.Size())) // EndOfFile
+	binary.LittleEndian.PutUint32(data[16:20], 1)                  // NumberOfLinks
 
 	if of.deletePending {
 		data[20] = 1 // DeletePending
@@ -2525,9 +2528,9 @@ func (s *Server) buildFileStreamInfo(info os.FileInfo) []byte {
 
 	data := make([]byte, 24+len(nameBytes))
 	// NextEntryOffset: 0 (last entry)
-	binary.LittleEndian.PutUint32(data[4:8], uint32(len(nameBytes)))   // StreamNameLength
-	binary.LittleEndian.PutUint64(data[8:16], uint64(info.Size()))      // StreamSize
-	binary.LittleEndian.PutUint64(data[16:24], uint64(info.Size()))     // StreamAllocationSize
+	binary.LittleEndian.PutUint32(data[4:8], uint32(len(nameBytes))) // StreamNameLength
+	binary.LittleEndian.PutUint64(data[8:16], uint64(info.Size()))   // StreamSize
+	binary.LittleEndian.PutUint64(data[16:24], uint64(info.Size()))  // StreamAllocationSize
 	copy(data[24:], nameBytes)
 
 	return data
@@ -2537,12 +2540,12 @@ func (s *Server) buildFileNetworkOpenInfo(info os.FileInfo) []byte {
 	data := make([]byte, 56)
 	now := timeToFiletime(info.ModTime())
 
-	binary.LittleEndian.PutUint64(data[0:8], now)                      // CreationTime
-	binary.LittleEndian.PutUint64(data[8:16], now)                     // LastAccessTime
-	binary.LittleEndian.PutUint64(data[16:24], now)                    // LastWriteTime
-	binary.LittleEndian.PutUint64(data[24:32], now)                    // ChangeTime
-	binary.LittleEndian.PutUint64(data[32:40], uint64(info.Size()))    // AllocationSize
-	binary.LittleEndian.PutUint64(data[40:48], uint64(info.Size()))    // EndOfFile
+	binary.LittleEndian.PutUint64(data[0:8], now)                   // CreationTime
+	binary.LittleEndian.PutUint64(data[8:16], now)                  // LastAccessTime
+	binary.LittleEndian.PutUint64(data[16:24], now)                 // LastWriteTime
+	binary.LittleEndian.PutUint64(data[24:32], now)                 // ChangeTime
+	binary.LittleEndian.PutUint64(data[32:40], uint64(info.Size())) // AllocationSize
+	binary.LittleEndian.PutUint64(data[40:48], uint64(info.Size())) // EndOfFile
 
 	var attrs uint32 = 0x80
 	if info.IsDir() {
@@ -2578,10 +2581,10 @@ func (s *Server) buildFsSizeInfo() []byte {
 	totalUnits := uint64(100 * 1024 * 1024 * 1024 / 4096)
 	freeUnits := uint64(50 * 1024 * 1024 * 1024 / 4096)
 
-	binary.LittleEndian.PutUint64(data[0:8], totalUnits)  // TotalAllocationUnits
-	binary.LittleEndian.PutUint64(data[8:16], freeUnits)  // AvailableAllocationUnits
-	binary.LittleEndian.PutUint32(data[16:20], 1)         // SectorsPerAllocationUnit
-	binary.LittleEndian.PutUint32(data[20:24], 4096)      // BytesPerSector
+	binary.LittleEndian.PutUint64(data[0:8], totalUnits) // TotalAllocationUnits
+	binary.LittleEndian.PutUint64(data[8:16], freeUnits) // AvailableAllocationUnits
+	binary.LittleEndian.PutUint32(data[16:20], 1)        // SectorsPerAllocationUnit
+	binary.LittleEndian.PutUint32(data[20:24], 4096)     // BytesPerSector
 
 	return data
 }
@@ -2595,7 +2598,7 @@ func (s *Server) buildFsAttributeInfo() []byte {
 	// FileSystemAttributes
 	attrs := uint32(0x0000002F) // Case-preserving, Unicode, etc.
 	binary.LittleEndian.PutUint32(data[0:4], attrs)
-	binary.LittleEndian.PutUint32(data[4:8], 255)                      // MaxFileNameLength
+	binary.LittleEndian.PutUint32(data[4:8], 255)                       // MaxFileNameLength
 	binary.LittleEndian.PutUint32(data[8:12], uint32(len(fsNameBytes))) // FileSystemNameLength
 	copy(data[12:], fsNameBytes)
 
@@ -2609,11 +2612,11 @@ func (s *Server) buildFsFullSizeInfo() []byte {
 	totalUnits := uint64(100 * 1024 * 1024 * 1024 / 4096)
 	freeUnits := uint64(50 * 1024 * 1024 * 1024 / 4096)
 
-	binary.LittleEndian.PutUint64(data[0:8], totalUnits)   // TotalAllocationUnits
-	binary.LittleEndian.PutUint64(data[8:16], freeUnits)   // CallerAvailableAllocationUnits
-	binary.LittleEndian.PutUint64(data[16:24], freeUnits)  // ActualAvailableAllocationUnits
-	binary.LittleEndian.PutUint32(data[24:28], 1)          // SectorsPerAllocationUnit
-	binary.LittleEndian.PutUint32(data[28:32], 4096)       // BytesPerSector
+	binary.LittleEndian.PutUint64(data[0:8], totalUnits)  // TotalAllocationUnits
+	binary.LittleEndian.PutUint64(data[8:16], freeUnits)  // CallerAvailableAllocationUnits
+	binary.LittleEndian.PutUint64(data[16:24], freeUnits) // ActualAvailableAllocationUnits
+	binary.LittleEndian.PutUint32(data[24:28], 1)         // SectorsPerAllocationUnit
+	binary.LittleEndian.PutUint32(data[28:32], 4096)      // BytesPerSector
 
 	return data
 }
@@ -2660,7 +2663,7 @@ func (s *Server) handleEcho(session *Session, pkt []byte, messageID uint64, tree
 
 // FSCTL codes
 const (
-	FSCTL_PIPE_TRANSCEIVE = 0x0011C017
+	FSCTL_PIPE_TRANSCEIVE   = 0x0011C017
 	FSCTL_DFS_GET_REFERRALS = 0x00060194
 )
 
@@ -2768,7 +2771,7 @@ func (s *Server) buildIoctlResponse(session *Session, of *OpenFile, messageID ui
 
 	// IOCTL Response
 	binary.LittleEndian.PutUint16(resp[64:66], 49) // StructureSize
-	binary.LittleEndian.PutUint16(resp[66:68], 0)   // Reserved
+	binary.LittleEndian.PutUint16(resp[66:68], 0)  // Reserved
 	binary.LittleEndian.PutUint32(resp[68:72], ctlCode)
 	copy(resp[72:88], fileID)
 	// InputOffset (4 bytes at 88)

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package mqtt
 
 import (
@@ -28,7 +31,7 @@ const (
 const (
 	ConnectCleanSession = 0x02
 	ConnectPassword     = 0x40
-	ConnectUsername      = 0x80
+	ConnectUsername     = 0x80
 )
 
 // ConnAckMessages maps return codes to human-readable messages

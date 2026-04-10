@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package tsts
 
 import (
@@ -201,8 +204,7 @@ func (s *SessionClient) GetSessionInformationEx(sessionId int32) (*SessionInfoEx
 	// ErrorCode (4)
 
 	// There is an NDR pointer wrapper + level indicator first.
-	// Typical: refPtr(4) + tag(4) + data...
-	// Let's parse flexibly.
+	// Typical layout: refPtr(4) + tag(4) + data...
 
 	if len(resp) < 20 {
 		return nil, fmt.Errorf("GetSessionInformationEx response too short")

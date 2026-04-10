@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -21,7 +24,7 @@ const (
 )
 
 var (
-	ifaceName = flag.String("i", "", "Interface to sniff on (skip interactive selection)")
+	ifaceName  = flag.String("i", "", "Interface to sniff on (skip interactive selection)")
 	listIfaces = flag.Bool("l", false, "List available interfaces and exit")
 )
 

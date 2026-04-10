@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -119,7 +122,7 @@ func (a *GMSADumpAttack) Run(session interface{}, config *Config) error {
 
 // --- Helper Functions ---
 
-// extractDomainFromDN converts "DC=liquorstore,DC=local" to "liquorstore.local"
+// extractDomainFromDN converts "DC=corp,DC=local" to "corp.local"
 func extractDomainFromDN(baseDN string) string {
 	var parts []string
 	for _, part := range strings.Split(baseDN, ",") {
@@ -1226,6 +1229,3 @@ func formatWindowsTime(s string) string {
 	}
 	return time.Unix(unixTime, 0).Format("2006-01-02 15:04:05")
 }
-
-// Suppress unused import warnings
-var _ = build.Debug

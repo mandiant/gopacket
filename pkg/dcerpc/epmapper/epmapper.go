@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package epmapper
 
 import (
@@ -28,19 +31,19 @@ const (
 
 // Inquiry types for ept_lookup
 const (
-	RPC_C_EP_ALL_ELTS         = 0
-	RPC_C_EP_MATCH_BY_IF      = 1
-	RPC_C_EP_MATCH_BY_OBJ     = 2
-	RPC_C_EP_MATCH_BY_BOTH    = 3
+	RPC_C_EP_ALL_ELTS      = 0
+	RPC_C_EP_MATCH_BY_IF   = 1
+	RPC_C_EP_MATCH_BY_OBJ  = 2
+	RPC_C_EP_MATCH_BY_BOTH = 3
 )
 
 // Version options
 const (
-	RPC_C_VERS_ALL          = 1
-	RPC_C_VERS_COMPATIBLE   = 2
-	RPC_C_VERS_EXACT        = 3
-	RPC_C_VERS_MAJOR_ONLY   = 4
-	RPC_C_VERS_UPTO         = 5
+	RPC_C_VERS_ALL        = 1
+	RPC_C_VERS_COMPATIBLE = 2
+	RPC_C_VERS_EXACT      = 3
+	RPC_C_VERS_MAJOR_ONLY = 4
+	RPC_C_VERS_UPTO       = 5
 )
 
 // Tower floor protocol identifiers
@@ -300,14 +303,14 @@ func parseTower(r *bytes.Reader) (string, string, string) {
 
 	var uuid string
 	var version string
-	var protocol string    // e.g. "ncacn_ip_tcp", "ncacn_np", "ncalrpc"
-	var portStr string     // e.g. "49671"
-	var ipAddr string      // e.g. "172.24.30.18"
-	var pipeName string    // e.g. "\\pipe\\lsass"
-	var nbName string      // e.g. "ALCOHOLDC"
-	var lrpcName string    // e.g. "NETLOGON_LRPC"
+	var protocol string     // e.g. "ncacn_ip_tcp", "ncacn_np", "ncalrpc"
+	var portStr string      // e.g. "49671"
+	var ipAddr string       // e.g. "192.0.2.10"
+	var pipeName string     // e.g. "\\pipe\\lsass"
+	var nbName string       // e.g. "DC01"
+	var lrpcName string     // e.g. "NETLOGON_LRPC"
 	var unknownProto string // For unrecognized protocols
-	uuidFloor := 0         // Track which UUID floor we're on
+	uuidFloor := 0          // Track which UUID floor we're on
 
 	for i := uint16(0); i < numFloors; i++ {
 		var lhsLen uint16
@@ -425,7 +428,6 @@ func parseTower(r *bytes.Reader) (string, string, string) {
 
 	return uuid, version, binding
 }
-
 
 func formatUUID(data []byte) string {
 	if len(data) < 16 {

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package wmi
 
 import (
@@ -16,9 +19,9 @@ type IWbemClassObject struct {
 
 // MethodDef describes a WMI method
 type MethodDef struct {
-	Name       string
-	InParams   []ParamDef
-	OutParams  []ParamDef
+	Name      string
+	InParams  []ParamDef
+	OutParams []ParamDef
 }
 
 // ParamDef describes a method parameter

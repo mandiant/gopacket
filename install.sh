@@ -90,6 +90,22 @@ if ! command -v gcc &>/dev/null; then
     exit 1
 fi
 
+# Check for libpcap headers (needed only by sniff and split tools)
+HAS_LIBPCAP=true
+if ! [ -f /usr/include/pcap.h ] \
+   && ! [ -f /usr/include/pcap/pcap.h ] \
+   && ! [ -f /usr/local/include/pcap.h ] \
+   && ! [ -f /opt/homebrew/include/pcap.h ] \
+   && ! pkg-config --exists libpcap 2>/dev/null; then
+    HAS_LIBPCAP=false
+    echo -e "${YELLOW}Warning: libpcap development headers not found${NC}"
+    echo "  The sniff and split tools will be skipped."
+    echo "  Install with: apt install libpcap-dev (Debian/Ubuntu/Kali)"
+    echo "             or yum install libpcap-devel (RHEL/CentOS)"
+    echo "             or brew install libpcap (macOS)"
+    echo ""
+fi
+
 # Determine script directory (where go.mod lives)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -116,15 +132,22 @@ echo "Building ${total} tools..."
 mkdir -p "${BUILD_DIR}"
 
 failed=0
+skipped=0
 for tool in "${tools[@]}"; do
+    if ! $HAS_LIBPCAP && { [ "$tool" = "sniff" ] || [ "$tool" = "split" ]; }; then
+        echo -e "  ${tool}... ${YELLOW}skipped (libpcap-dev not installed)${NC}"
+        skipped=$((skipped + 1))
+        continue
+    fi
     echo -n "  ${tool}... "
-    if CGO_ENABLED=1 go build -o "${BUILD_DIR}/${tool}" \
+    if err=$(CGO_ENABLED=1 go build -o "${BUILD_DIR}/${tool}" \
         -ldflags '-linkmode external -extldflags "-static-libgcc"' \
-        "./tools/${tool}" 2>/dev/null; then
+        "./tools/${tool}" 2>&1); then
         echo -e "${GREEN}ok${NC}"
     else
         echo -e "${RED}failed${NC}"
-        ((failed++))
+        echo "$err" | sed 's/^/      /'
+        failed=$((failed + 1))
     fi
 done
 
@@ -133,7 +156,11 @@ if [ $failed -gt 0 ]; then
     exit 1
 fi
 
-echo -e "\n${GREEN}All ${total} tools built successfully${NC}"
+built=$((total - skipped))
+echo -e "\n${GREEN}Built ${built}/${total} tools successfully${NC}"
+if [ $skipped -gt 0 ]; then
+    echo -e "${YELLOW}Skipped ${skipped} tool(s) — install libpcap-dev to enable them${NC}"
+fi
 
 if $build_only; then
     echo "Binaries are in ${BUILD_DIR}/"
@@ -154,6 +181,9 @@ else
 fi
 
 for tool in "${tools[@]}"; do
+    if [ ! -f "${BUILD_DIR}/${tool}" ]; then
+        continue
+    fi
     # Normalize tool name: lowercase, replace special chars with hyphens
     normalized=$(echo "$tool" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
     dest="${INSTALL_DIR}/gopacket-${normalized}"
@@ -161,7 +191,7 @@ for tool in "${tools[@]}"; do
     $SUDO chmod +x "$dest"
 done
 
-echo -e "${GREEN}Installed ${total} tools to ${INSTALL_DIR}/${NC}"
+echo -e "${GREEN}Installed ${built} tools to ${INSTALL_DIR}/${NC}"
 echo ""
 echo "Tools are available as:"
 echo "  gopacket-secretsdump, gopacket-smbclient, gopacket-psexec, etc."

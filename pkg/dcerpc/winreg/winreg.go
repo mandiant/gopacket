@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package winreg
 
 // MS-RRP (Windows Remote Registry Protocol)
@@ -13,37 +16,37 @@ const MinorVersion = 0
 
 // Operation numbers (MS-RRP 3.1.5)
 const (
-	OpOpenClassesRoot     = 0
-	OpOpenCurrentUser     = 1
-	OpOpenLocalMachine    = 2
-	OpOpenPerformanceData = 3
-	OpOpenUsers           = 4
-	OpBaseRegCloseKey     = 5
-	OpBaseRegCreateKey    = 6
-	OpBaseRegDeleteKey    = 7
-	OpBaseRegDeleteValue  = 8
-	OpBaseRegEnumKey      = 9
-	OpBaseRegEnumValue    = 10
-	OpBaseRegFlushKey     = 11
-	OpBaseRegGetKeySecurity = 12
-	OpBaseRegLoadKey      = 13
-	OpBaseRegOpenKey      = 15
-	OpBaseRegQueryInfoKey = 16
-	OpBaseRegQueryValue   = 17
-	OpBaseRegReplaceKey   = 18
-	OpBaseRegRestoreKey   = 19
-	OpBaseRegSaveKey      = 20
-	OpBaseRegSetKeySecurity = 21
-	OpBaseRegSetValue     = 22
-	OpBaseRegUnLoadKey    = 23
-	OpBaseRegGetVersion   = 26
-	OpOpenCurrentConfig   = 27
-	OpBaseRegQueryMultipleValues = 29
-	OpBaseRegSaveKeyEx    = 31
-	OpOpenPerformanceText = 32
-	OpOpenPerformanceNlsText = 33
+	OpOpenClassesRoot             = 0
+	OpOpenCurrentUser             = 1
+	OpOpenLocalMachine            = 2
+	OpOpenPerformanceData         = 3
+	OpOpenUsers                   = 4
+	OpBaseRegCloseKey             = 5
+	OpBaseRegCreateKey            = 6
+	OpBaseRegDeleteKey            = 7
+	OpBaseRegDeleteValue          = 8
+	OpBaseRegEnumKey              = 9
+	OpBaseRegEnumValue            = 10
+	OpBaseRegFlushKey             = 11
+	OpBaseRegGetKeySecurity       = 12
+	OpBaseRegLoadKey              = 13
+	OpBaseRegOpenKey              = 15
+	OpBaseRegQueryInfoKey         = 16
+	OpBaseRegQueryValue           = 17
+	OpBaseRegReplaceKey           = 18
+	OpBaseRegRestoreKey           = 19
+	OpBaseRegSaveKey              = 20
+	OpBaseRegSetKeySecurity       = 21
+	OpBaseRegSetValue             = 22
+	OpBaseRegUnLoadKey            = 23
+	OpBaseRegGetVersion           = 26
+	OpOpenCurrentConfig           = 27
+	OpBaseRegQueryMultipleValues  = 29
+	OpBaseRegSaveKeyEx            = 31
+	OpOpenPerformanceText         = 32
+	OpOpenPerformanceNlsText      = 33
 	OpBaseRegQueryMultipleValues2 = 34
-	OpBaseRegDeleteKeyEx  = 35
+	OpBaseRegDeleteKeyEx          = 35
 )
 
 // REGSAM - Registry security access mask (MS-RRP 2.2.3)
@@ -81,14 +84,14 @@ const (
 
 // Error codes (MS-RRP 2.2.7)
 const (
-	ERROR_SUCCESS           = 0
-	ERROR_FILE_NOT_FOUND    = 2
-	ERROR_ACCESS_DENIED     = 5
-	ERROR_INVALID_HANDLE    = 6
-	ERROR_OUTOFMEMORY       = 14
-	ERROR_INVALID_PARAMETER = 87
+	ERROR_SUCCESS             = 0
+	ERROR_FILE_NOT_FOUND      = 2
+	ERROR_ACCESS_DENIED       = 5
+	ERROR_INVALID_HANDLE      = 6
+	ERROR_OUTOFMEMORY         = 14
+	ERROR_INVALID_PARAMETER   = 87
 	ERROR_INSUFFICIENT_BUFFER = 122
-	ERROR_MORE_DATA         = 234
-	ERROR_NO_MORE_ITEMS     = 259
-	ERROR_KEY_DELETED       = 1018
+	ERROR_MORE_DATA           = 234
+	ERROR_NO_MORE_ITEMS       = 259
+	ERROR_KEY_DELETED         = 1018
 )

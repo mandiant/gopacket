@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package winreg
 
 import (
@@ -11,14 +14,14 @@ import (
 
 // KeyInfo contains information about a registry key
 type KeyInfo struct {
-	ClassName     string
-	SubKeys       uint32
-	MaxSubKeyLen  uint32
-	MaxClassLen   uint32
-	Values        uint32
+	ClassName       string
+	SubKeys         uint32
+	MaxSubKeyLen    uint32
+	MaxClassLen     uint32
+	Values          uint32
 	MaxValueNameLen uint32
 	MaxValueDataLen uint32
-	LastWriteTime uint64
+	LastWriteTime   uint64
 }
 
 // OpenLocalMachine opens the HKEY_LOCAL_MACHINE root key
@@ -148,8 +151,8 @@ func BaseRegQueryInfoKey(client *dcerpc.Client, hKey []byte) (*KeyInfo, error) {
 	// lpClassIn (RRP_UNICODE_STRING) - provide empty buffer for class name
 	// We need to provide space for the class name to be returned
 	// MaxLen = 65534 (max class name), Len = 0, pointer to conformant array
-	binary.Write(buf, binary.LittleEndian, uint16(0))      // Length
-	binary.Write(buf, binary.LittleEndian, uint16(65534))  // MaximumLength
+	binary.Write(buf, binary.LittleEndian, uint16(0))       // Length
+	binary.Write(buf, binary.LittleEndian, uint16(65534))   // MaximumLength
 	binary.Write(buf, binary.LittleEndian, uint32(0x20000)) // Pointer
 
 	// Deferred: conformant array for class name buffer
@@ -376,9 +379,9 @@ func BaseRegEnumKey(client *dcerpc.Client, hKey []byte, index uint32) (string, s
 	binary.Write(buf, binary.LittleEndian, index)
 
 	// lpNameIn (RRP_UNICODE_STRING) - buffer for name
-	maxNameLen := uint16(256 * 2) // 256 chars
-	binary.Write(buf, binary.LittleEndian, uint16(0))      // Length
-	binary.Write(buf, binary.LittleEndian, maxNameLen)     // MaximumLength
+	maxNameLen := uint16(256 * 2)                           // 256 chars
+	binary.Write(buf, binary.LittleEndian, uint16(0))       // Length
+	binary.Write(buf, binary.LittleEndian, maxNameLen)      // MaximumLength
 	binary.Write(buf, binary.LittleEndian, uint32(0x20000)) // Pointer
 
 	// Deferred name buffer
@@ -557,15 +560,15 @@ func BaseRegEnumValue(client *dcerpc.Client, hKey []byte, index uint32, maxNameL
 	// lpValueNameIn (RRP_UNICODE_STRING) - provide buffer sized for max name
 	nameBufBytes := uint16((maxNameLen + 1) * 2)
 	nameCharCount := uint32(maxNameLen + 1)
-	binary.Write(buf, binary.LittleEndian, nameBufBytes)     // Length
-	binary.Write(buf, binary.LittleEndian, nameBufBytes)     // MaximumLength
-	binary.Write(buf, binary.LittleEndian, uint32(0x20000))  // Pointer
+	binary.Write(buf, binary.LittleEndian, nameBufBytes)    // Length
+	binary.Write(buf, binary.LittleEndian, nameBufBytes)    // MaximumLength
+	binary.Write(buf, binary.LittleEndian, uint32(0x20000)) // Pointer
 
 	// Deferred name buffer (conformant varying array of uint16)
 	binary.Write(buf, binary.LittleEndian, nameCharCount) // MaxCount
 	binary.Write(buf, binary.LittleEndian, uint32(0))     // Offset
 	binary.Write(buf, binary.LittleEndian, nameCharCount) // ActualCount
-	buf.Write(make([]byte, int(nameBufBytes)))             // Zero-filled buffer
+	buf.Write(make([]byte, int(nameBufBytes)))            // Zero-filled buffer
 
 	// Pad to 4-byte boundary
 	if buf.Len()%4 != 0 {
@@ -579,10 +582,10 @@ func BaseRegEnumValue(client *dcerpc.Client, hKey []byte, index uint32, maxNameL
 
 	// lpData (conformant varying byte array pointer) + deferred
 	binary.Write(buf, binary.LittleEndian, uint32(0x20008)) // Pointer
-	binary.Write(buf, binary.LittleEndian, maxDataLen)       // MaxCount
-	binary.Write(buf, binary.LittleEndian, uint32(0))        // Offset
-	binary.Write(buf, binary.LittleEndian, maxDataLen)       // ActualCount
-	buf.Write(make([]byte, maxDataLen))                      // Placeholder data
+	binary.Write(buf, binary.LittleEndian, maxDataLen)      // MaxCount
+	binary.Write(buf, binary.LittleEndian, uint32(0))       // Offset
+	binary.Write(buf, binary.LittleEndian, maxDataLen)      // ActualCount
+	buf.Write(make([]byte, maxDataLen))                     // Placeholder data
 
 	// Pad data to 4-byte boundary
 	if buf.Len()%4 != 0 {
@@ -592,11 +595,11 @@ func BaseRegEnumValue(client *dcerpc.Client, hKey []byte, index uint32, maxNameL
 
 	// lpcbData (LPDWORD pointer) + deferred
 	binary.Write(buf, binary.LittleEndian, uint32(0x2000c)) // Pointer
-	binary.Write(buf, binary.LittleEndian, maxDataLen)       // Buffer size
+	binary.Write(buf, binary.LittleEndian, maxDataLen)      // Buffer size
 
 	// lpcbLen (LPDWORD pointer) + deferred
 	binary.Write(buf, binary.LittleEndian, uint32(0x20010)) // Pointer
-	binary.Write(buf, binary.LittleEndian, maxDataLen)       // Initial length
+	binary.Write(buf, binary.LittleEndian, maxDataLen)      // Initial length
 
 	resp, err := client.Call(OpBaseRegEnumValue, buf.Bytes())
 	if err != nil {
@@ -851,17 +854,17 @@ func writeRRPUnicodeString(buf *bytes.Buffer, s string) {
 	byteLen := len(utf16Chars) * 2
 
 	// RRP_UNICODE_STRING structure:
-	binary.Write(buf, binary.LittleEndian, uint16(byteLen))   // Length
-	binary.Write(buf, binary.LittleEndian, uint16(byteLen))   // MaximumLength
-	binary.Write(buf, binary.LittleEndian, uint32(0x20000))   // Pointer (referent ID)
+	binary.Write(buf, binary.LittleEndian, uint16(byteLen)) // Length
+	binary.Write(buf, binary.LittleEndian, uint16(byteLen)) // MaximumLength
+	binary.Write(buf, binary.LittleEndian, uint32(0x20000)) // Pointer (referent ID)
 
 	// Deferred: conformant varying array
 	// MaxCount = ActualCount = number of characters (including null)
 	charCount := uint32(len(utf16Chars))
 
-	binary.Write(buf, binary.LittleEndian, charCount)  // MaxCount
-	binary.Write(buf, binary.LittleEndian, uint32(0))  // Offset
-	binary.Write(buf, binary.LittleEndian, charCount)  // ActualCount
+	binary.Write(buf, binary.LittleEndian, charCount) // MaxCount
+	binary.Write(buf, binary.LittleEndian, uint32(0)) // Offset
+	binary.Write(buf, binary.LittleEndian, charCount) // ActualCount
 
 	// Write UTF-16LE data (including null terminator)
 	for _, c := range utf16Chars {

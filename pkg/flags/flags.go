@@ -1,11 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package flags
 
 import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 	"sort"
+	"strings"
 
 	"gopacket/internal/build"
 	"gopacket/pkg/session"
@@ -20,18 +23,18 @@ var ExtraUsageText string
 // Options holds all standard CLI options.
 type Options struct {
 	// Authentication
-	Hashes    string
-	NoPass    bool
-	Kerberos  bool
-	AesKey    string
-	Keytab    string
+	Hashes   string
+	NoPass   bool
+	Kerberos bool
+	AesKey   string
+	Keytab   string
 
 	// Connection
-	DcHost    string
-	DcIP      string
-	TargetIP  string
-	Port      int
-	IPv6      bool
+	DcHost   string
+	DcIP     string
+	TargetIP string
+	Port     int
+	IPv6     bool
 
 	// Utility
 	InputFile  string
@@ -39,7 +42,7 @@ type Options struct {
 	Timestamp  bool
 
 	// Debug
-	Debug     bool
+	Debug bool
 
 	// Target (Positional)
 	TargetStr string
@@ -70,7 +73,7 @@ func Parse() *Options {
 	flag.BoolVar(&opts.Kerberos, "k", false, "Use Kerberos authentication")
 	flag.StringVar(&opts.AesKey, "aesKey", "", "AES key to use for Kerberos Authentication (128 or 256 bits)")
 	flag.StringVar(&opts.Keytab, "keytab", "", "Read keys for SPN from keytab file")
-	
+
 	flag.StringVar(&opts.DcHost, "dc-host", "", "Hostname of the domain controller")
 	flag.StringVar(&opts.DcIP, "dc-ip", "", "IP Address of the domain controller")
 	flag.StringVar(&opts.TargetIP, "target-ip", "", "IP Address of the target machine")
@@ -80,9 +83,9 @@ func Parse() *Options {
 	flag.StringVar(&opts.InputFile, "inputfile", "", "input file with list of entries")
 	flag.StringVar(&opts.OutputFile, "outputfile", "", "base output filename")
 	flag.BoolVar(&opts.Timestamp, "ts", false, "Adds timestamp to every logging output")
-	
+
 	flag.BoolVar(&opts.Debug, "debug", false, "Turn DEBUG output ON")
-	
+
 	// Custom Usage to mimic Impacket
 	flag.Usage = func() {
 		printBanner()
@@ -105,7 +108,7 @@ func Parse() *Options {
 	CheckHelp()
 
 	flag.Parse()
-	
+
 	// Handle Positional Arguments (target + optional command/args)
 	if flag.NArg() == 0 {
 		return opts
@@ -114,7 +117,7 @@ func Parse() *Options {
 	if flag.NArg() > 1 {
 		opts.Arguments = flag.Args()[1:]
 	}
-	
+
 	// Set Global Settings
 	if opts.Debug {
 		build.Debug = true
@@ -122,7 +125,7 @@ func Parse() *Options {
 	if opts.Timestamp {
 		build.Timestamp = true
 	}
-	
+
 	return opts
 }
 
@@ -134,7 +137,7 @@ func printGroupedHelp() {
 	authFlags := []string{"hashes", "no-pass", "k", "aesKey", "keytab"}
 	connFlags := []string{"6", "dc-host", "dc-ip", "target-ip", "port"}
 	miscFlags := []string{"inputfile", "outputfile", "ts", "debug"}
-	
+
 	// Maps to store flags
 	authMap := make(map[string]*flag.Flag)
 	connMap := make(map[string]*flag.Flag)
@@ -143,14 +146,38 @@ func printGroupedHelp() {
 
 	flag.VisitAll(func(f *flag.Flag) {
 		found := false
-		for _, name := range authFlags { if f.Name == name { authMap[f.Name] = f; found = true; break } }
-		if found { return }
-		
-		for _, name := range connFlags { if f.Name == name { connMap[f.Name] = f; found = true; break } }
-		if found { return }
+		for _, name := range authFlags {
+			if f.Name == name {
+				authMap[f.Name] = f
+				found = true
+				break
+			}
+		}
+		if found {
+			return
+		}
 
-		for _, name := range miscFlags { if f.Name == name { miscMap[f.Name] = f; found = true; break } }
-		if found { return }
+		for _, name := range connFlags {
+			if f.Name == name {
+				connMap[f.Name] = f
+				found = true
+				break
+			}
+		}
+		if found {
+			return
+		}
+
+		for _, name := range miscFlags {
+			if f.Name == name {
+				miscMap[f.Name] = f
+				found = true
+				break
+			}
+		}
+		if found {
+			return
+		}
 
 		otherMap[f.Name] = f
 	})
@@ -162,12 +189,16 @@ func printGroupedHelp() {
 }
 
 func printCategory(name string, flags map[string]*flag.Flag) {
-	if len(flags) == 0 { return }
+	if len(flags) == 0 {
+		return
+	}
 	fmt.Fprintf(os.Stderr, "\n%s:\n", name)
-	
+
 	// Sort keys
 	var keys []string
-	for k := range flags { keys = append(keys, k) }
+	for k := range flags {
+		keys = append(keys, k)
+	}
 	sort.Strings(keys)
 
 	for _, k := range keys {
@@ -210,7 +241,7 @@ func (o *Options) ApplyToSession(target *session.Target, creds *session.Credenti
 	creds.DCIP = o.DcIP
 	creds.AESKey = o.AesKey
 	creds.Keytab = o.Keytab
-	
+
 	if o.TargetIP != "" {
 		target.IP = o.TargetIP
 	}

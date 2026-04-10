@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -18,8 +21,8 @@ import (
 	"gopacket/pkg/dcerpc/wkssvc"
 	"gopacket/pkg/flags"
 	"gopacket/pkg/session"
-	"gopacket/pkg/transport"
 	"gopacket/pkg/smb"
+	"gopacket/pkg/transport"
 )
 
 func main() {
@@ -111,7 +114,7 @@ func main() {
 
 	// State tracking for change detection
 	prevSessions := make(map[string]map[string]bool) // target -> set of "user@host"
-	prevLogins := make(map[string]map[string]bool)    // target -> set of "domain\\user"
+	prevLogins := make(map[string]map[string]bool)   // target -> set of "domain\\user"
 
 	for {
 		// Check aliveness in parallel

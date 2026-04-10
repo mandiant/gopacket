@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -245,4 +248,3 @@ func writeHTTPResponse(conn net.Conn, resp *http.Response) error {
 
 	return nil
 }
-

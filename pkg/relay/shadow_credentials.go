@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -54,7 +57,7 @@ func generateSelfSignedCert(subject string) (*x509.Certificate, *rsa.PrivateKey,
 // Matches Impacket's KeyCredential.raw_public_key().
 func rawPublicKey(pub *rsa.PublicKey) []byte {
 	exponent := big.NewInt(int64(pub.E)).Bytes() // big-endian
-	modulus := pub.N.Bytes()                      // big-endian
+	modulus := pub.N.Bytes()                     // big-endian
 
 	buf := make([]byte, 0, 4+4+4+4+8+len(exponent)+len(modulus))
 

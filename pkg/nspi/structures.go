@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package nspi
 
 import (
@@ -135,15 +138,16 @@ func (a *PropertyTagArray) Marshal() []byte {
 // MarshalNDR serializes the property tag array in NDR format.
 // The IDL defines: [size_is(cValues+1)] DWORD aulPropTag[]
 // This is a conformant-varying array. Wire format:
-//   MaxCount(4) = cValues+1, cValues(4), Offset(4) = 0, ActualCount(4) = cValues, elements
+//
+//	MaxCount(4) = cValues+1, cValues(4), Offset(4) = 0, ActualCount(4) = cValues, elements
 func (a *PropertyTagArray) MarshalNDR() []byte {
 	buf := new(bytes.Buffer)
 
 	count := uint32(len(a.Values))
-	binary.Write(buf, binary.LittleEndian, count+1) // MaxCount = cValues + 1
-	binary.Write(buf, binary.LittleEndian, count)   // cValues
+	binary.Write(buf, binary.LittleEndian, count+1)   // MaxCount = cValues + 1
+	binary.Write(buf, binary.LittleEndian, count)     // cValues
 	binary.Write(buf, binary.LittleEndian, uint32(0)) // Offset (conformant-varying)
-	binary.Write(buf, binary.LittleEndian, count)   // ActualCount
+	binary.Write(buf, binary.LittleEndian, count)     // ActualCount
 
 	for _, v := range a.Values {
 		binary.Write(buf, binary.LittleEndian, uint32(v))

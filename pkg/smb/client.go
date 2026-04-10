@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package smb
 
 import (
@@ -12,19 +15,19 @@ import (
 	"sort"
 	"strings"
 
-	"gopacket/pkg/thirdparty/smb2"
 	"gopacket/internal/build"
 	"gopacket/pkg/kerberos"
 	"gopacket/pkg/session"
+	"gopacket/pkg/thirdparty/smb2"
 	"gopacket/pkg/transport"
 )
 
 type Client struct {
-	Session *smb2.Session
-	Target  session.Target
-	Creds   *session.Credentials
-	dialer  *transport.Dialer
-	conn    net.Conn
+	Session   *smb2.Session
+	Target    session.Target
+	Creds     *session.Credentials
+	dialer    *transport.Dialer
+	conn      net.Conn
 	initiator smb2.Initiator
 
 	currentShare *smb2.Share
@@ -56,90 +59,75 @@ func (c *Client) Connect() error {
 
 	address := fmt.Sprintf("%s:%d", host, port)
 
-
-
-	
-
 	if build.Debug {
 
 		log.Printf("[D] SMB: Attempting connection to %s", address)
 
 	}
 
-
-
 	conn, err := c.dialer.Dial("tcp", address)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s: %v", address, err)
 	}
-		c.conn = conn
-	
-		var initiator smb2.Initiator
-	
-		if c.Creds.UseKerberos {
-			if build.Debug {
-				log.Printf("[D] SMB: Using Kerberos Authentication")
-			}
-			
-			kClient, err := kerberos.NewClientFromSession(c.Creds, c.Target, c.Creds.DCIP)
-			if err != nil {
-				return fmt.Errorf("failed to create kerberos client: %v", err)
-			}
-			
-			spn := fmt.Sprintf("cifs/%s", c.Target.Host)
-			initiator = &KerberosInitiator{
-				KrbClient: kClient,
-				TargetSPN: spn,
-			}
-		} else {
-			// NTLM
-			ntlmInit := &smb2.NTLMInitiator{
-				User:	 c.Creds.Username,
-				Password: c.Creds.Password,
-				Domain:	 c.Creds.Domain,
-			}
-			// Handle Pass-the-Hash
-			if c.Creds.Hash != "" {
-				parts := strings.Split(c.Creds.Hash, ":")
-				ntHashStr := ""
-				if len(parts) == 2 {
-					ntHashStr = parts[1]
-				} else if len(parts) == 1 {
-					ntHashStr = parts[0]
-				}
-				if ntHashStr != "" {
-					ntHashBytes, err := hex.DecodeString(ntHashStr)
-					if err == nil && len(ntHashBytes) == 16 {
-						ntlmInit.Hash = ntHashBytes
-						ntlmInit.Password = ""
-					}
-				}
-			}
-			initiator = ntlmInit
+	c.conn = conn
+
+	var initiator smb2.Initiator
+
+	if c.Creds.UseKerberos {
+		if build.Debug {
+			log.Printf("[D] SMB: Using Kerberos Authentication")
 		}
-	
-					d := &smb2.Dialer{
-	
-						Initiator: initiator,
-	
-						Negotiator: smb2.Negotiator{
-	
-							SpecifiedDialect: 0x0210,
-							RequireMessageSigning: true,
-	
-						},
-	
-					}
-	
-				
-	
-			
-	
-		
-	
-			if build.Debug {
-	
-		
+
+		kClient, err := kerberos.NewClientFromSession(c.Creds, c.Target, c.Creds.DCIP)
+		if err != nil {
+			return fmt.Errorf("failed to create kerberos client: %v", err)
+		}
+
+		spn := fmt.Sprintf("cifs/%s", c.Target.Host)
+		initiator = &KerberosInitiator{
+			KrbClient: kClient,
+			TargetSPN: spn,
+		}
+	} else {
+		// NTLM
+		ntlmInit := &smb2.NTLMInitiator{
+			User:     c.Creds.Username,
+			Password: c.Creds.Password,
+			Domain:   c.Creds.Domain,
+		}
+		// Handle Pass-the-Hash
+		if c.Creds.Hash != "" {
+			parts := strings.Split(c.Creds.Hash, ":")
+			ntHashStr := ""
+			if len(parts) == 2 {
+				ntHashStr = parts[1]
+			} else if len(parts) == 1 {
+				ntHashStr = parts[0]
+			}
+			if ntHashStr != "" {
+				ntHashBytes, err := hex.DecodeString(ntHashStr)
+				if err == nil && len(ntHashBytes) == 16 {
+					ntlmInit.Hash = ntHashBytes
+					ntlmInit.Password = ""
+				}
+			}
+		}
+		initiator = ntlmInit
+	}
+
+	d := &smb2.Dialer{
+
+		Initiator: initiator,
+
+		Negotiator: smb2.Negotiator{
+
+			SpecifiedDialect:      0x0210,
+			RequireMessageSigning: true,
+		},
+	}
+
+	if build.Debug {
+
 		log.Printf("[D] SMB: Negotiating and Authenticating as %s\\%s", c.Creds.Domain, c.Creds.Username)
 	}
 
@@ -237,7 +225,7 @@ func (c *Client) Cd(dir string) error {
 		return fmt.Errorf("no share selected")
 	}
 	newPath := path.Join(c.currentPath, dir)
-	
+
 	// Prevent going above root
 	if strings.HasPrefix(newPath, "..") {
 		c.currentPath = ""
@@ -360,7 +348,7 @@ func (c *Client) Tree(root string, fn TreeWalkFunc) error {
 	if c.currentShare == nil {
 		return fmt.Errorf("no share selected")
 	}
-	
+
 	// Helper for recursive walk
 	var walk func(currentPath string) error
 	walk = func(currentPath string) error {
@@ -382,7 +370,7 @@ func (c *Client) Tree(root string, fn TreeWalkFunc) error {
 		}
 		return nil
 	}
-	
+
 	startPath := path.Join(c.currentPath, root)
 	return walk(startPath)
 }

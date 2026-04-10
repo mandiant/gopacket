@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -20,14 +23,14 @@ import (
 )
 
 var (
-	computerName   = flag.String("computer-name", "", "Name of the computer account to add (default: random)")
-	computerPass   = flag.String("computer-pass", "", "Password for the computer account (default: random)")
-	method         = flag.String("method", "SAMR", "Method to use: SAMR or LDAPS")
-	baseDN         = flag.String("baseDN", "", "Specify the baseDN for LDAP (default: auto from domain)")
-	computerGroup  = flag.String("computer-group", "", "Group to add the computer to (LDAP method, default: CN=Computers)")
-	noAdd          = flag.Bool("no-add", false, "Don't add a new computer, just set the password on an existing one")
-	deleteAcct     = flag.Bool("delete", false, "Delete an existing computer")
-	domainNetbios  = flag.String("domain-netbios", "", "Domain NetBIOS name. Required if the DC has multiple domains.")
+	computerName  = flag.String("computer-name", "", "Name of the computer account to add (default: random)")
+	computerPass  = flag.String("computer-pass", "", "Password for the computer account (default: random)")
+	method        = flag.String("method", "SAMR", "Method to use: SAMR or LDAPS")
+	baseDN        = flag.String("baseDN", "", "Specify the baseDN for LDAP (default: auto from domain)")
+	computerGroup = flag.String("computer-group", "", "Group to add the computer to (LDAP method, default: CN=Computers)")
+	noAdd         = flag.Bool("no-add", false, "Don't add a new computer, just set the password on an existing one")
+	deleteAcct    = flag.Bool("delete", false, "Delete an existing computer")
+	domainNetbios = flag.String("domain-netbios", "", "Domain NetBIOS name. Required if the DC has multiple domains.")
 )
 
 func main() {

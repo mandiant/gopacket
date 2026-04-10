@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // Package dpapi implements DPAPI (Data Protection API) parsing and decryption
 // for Windows secrets including master keys, credentials, and vaults.
 package dpapi
@@ -32,28 +35,28 @@ const (
 
 // MasterKeyFile represents the header of a DPAPI master key file
 type MasterKeyFile struct {
-	Version       uint32
-	Unk1          uint32
-	Unk2          uint32
-	GUID          string // 36 chars UUID
-	Unk3          uint32
-	Policy        uint32
-	Flags         uint32
-	MasterKeyLen  uint64
-	BackupKeyLen  uint64
-	CredHistLen   uint64
-	DomainKeyLen  uint64
+	Version      uint32
+	Unk1         uint32
+	Unk2         uint32
+	GUID         string // 36 chars UUID
+	Unk3         uint32
+	Policy       uint32
+	Flags        uint32
+	MasterKeyLen uint64
+	BackupKeyLen uint64
+	CredHistLen  uint64
+	DomainKeyLen uint64
 }
 
 // MasterKey represents an encrypted master key
 type MasterKey struct {
-	Version       uint32
-	Salt          []byte // 16 bytes
-	Iterations    uint32
-	HashAlgo      uint32
-	CryptAlgo     uint32
-	Data          []byte
-	DecryptedKey  []byte // Set after successful decryption
+	Version      uint32
+	Salt         []byte // 16 bytes
+	Iterations   uint32
+	HashAlgo     uint32
+	CryptAlgo    uint32
+	Data         []byte
+	DecryptedKey []byte // Set after successful decryption
 }
 
 // DomainKey represents a domain-encrypted master key
@@ -73,10 +76,10 @@ type CredHist struct {
 
 // CredentialFile represents a DPAPI credential file
 type CredentialFile struct {
-	Version    uint32
-	Size       uint32
-	Unknown    uint32
-	DPAPIBlob  *DPAPIBlob
+	Version   uint32
+	Size      uint32
+	Unknown   uint32
+	DPAPIBlob *DPAPIBlob
 }
 
 // DPAPIBlob represents an encrypted DPAPI blob
@@ -101,14 +104,14 @@ type DPAPIBlob struct {
 
 // Credential represents a decrypted Windows credential
 type Credential struct {
-	Flags         uint32
-	Type          uint32
-	LastWritten   uint64
-	Persist       uint32
-	TargetName    string
-	Comment       string
-	TargetAlias   string
-	UserName      string
+	Flags          uint32
+	Type           uint32
+	LastWritten    uint64
+	Persist        uint32
+	TargetName     string
+	Comment        string
+	TargetAlias    string
+	UserName       string
 	CredentialBlob []byte
 }
 

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package drsuapi
 
 import (
@@ -43,12 +46,12 @@ func DsCrackNames(client *dcerpc.Client, hBind []byte, formatOffered, formatDesi
 	// rpNames is WCHAR** - pointer to conformant array of string pointers
 
 	// Structure fixed fields
-	binary.Write(buf, binary.LittleEndian, uint32(0))              // CodePage (0 = default)
-	binary.Write(buf, binary.LittleEndian, uint32(0))              // LocaleId (0 = default)
+	binary.Write(buf, binary.LittleEndian, uint32(0))                // CodePage (0 = default)
+	binary.Write(buf, binary.LittleEndian, uint32(0))                // LocaleId (0 = default)
 	binary.Write(buf, binary.LittleEndian, uint32(DS_NAME_NO_FLAGS)) // dwFlags
-	binary.Write(buf, binary.LittleEndian, formatOffered)          // formatOffered
-	binary.Write(buf, binary.LittleEndian, formatDesired)          // formatDesired
-	binary.Write(buf, binary.LittleEndian, uint32(len(names)))     // cNames
+	binary.Write(buf, binary.LittleEndian, formatOffered)            // formatOffered
+	binary.Write(buf, binary.LittleEndian, formatDesired)            // formatDesired
+	binary.Write(buf, binary.LittleEndian, uint32(len(names)))       // cNames
 
 	// rpNames - referent ID for the outer pointer (array pointer)
 	binary.Write(buf, binary.LittleEndian, uint32(0x00020004)) // Referent ID
@@ -220,7 +223,7 @@ func readUnicodeString(r *bytes.Reader) string {
 }
 
 // GetDomainDN converts a DNS domain name to a distinguished name.
-// For example: "liquorstore.local" -> "DC=liquorstore,DC=local"
+// For example: "corp.local" -> "DC=corp,DC=local"
 func GetDomainDN(client *dcerpc.Client, hBind []byte, domainDNS string) (string, error) {
 	// Try DsCrackNames first
 	results, err := DsCrackNames(client, hBind, DS_DNS_DOMAIN_NAME, DS_FQDN_1779_NAME, []string{domainDNS})
@@ -229,7 +232,7 @@ func GetDomainDN(client *dcerpc.Client, hBind []byte, domainDNS string) (string,
 	}
 
 	// Fallback: construct DN from domain name parts
-	// liquorstore.local -> DC=liquorstore,DC=local
+	// corp.local -> DC=corp,DC=local
 	if build.Debug && err != nil {
 		log.Printf("[D] DsCrackNames failed (%v), constructing DN from domain name", err)
 	}
@@ -238,7 +241,7 @@ func GetDomainDN(client *dcerpc.Client, hBind []byte, domainDNS string) (string,
 }
 
 // DomainDNSToLDAP converts a DNS domain name to LDAP DN format.
-// Example: "liquorstore.local" -> "DC=liquorstore,DC=local"
+// Example: "corp.local" -> "DC=corp,DC=local"
 func DomainDNSToLDAP(domain string) string {
 	parts := strings.Split(domain, ".")
 	var dnParts []string

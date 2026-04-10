@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package ldap
 
 import (
@@ -44,7 +47,7 @@ func NewControlMicrosoftSDFlags(flags int) *ControlMicrosoftSDFlags {
 
 // ModifyChange represents a single modification to an LDAP entry.
 type ModifyChange struct {
-	Operation int      // goldap.AddAttribute, ReplaceAttribute, DeleteAttribute
+	Operation int // goldap.AddAttribute, ReplaceAttribute, DeleteAttribute
 	AttrName  string
 	AttrVals  []string
 }

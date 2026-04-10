@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -30,9 +33,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("[-] Error parsing target string: %v", err)
 	}
-	
+
 	opts.ApplyToSession(&target, &creds)
-	
+
 	if !opts.NoPass {
 		if err := session.EnsurePassword(&creds); err != nil {
 			log.Fatal(err)

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -25,8 +28,8 @@ type HTTPRelayClient struct {
 	query      string // URL query string
 
 	// Cookies from authenticated response (for use by attack modules)
-	cookies    []*http.Cookie
-	lastResult []byte
+	cookies       []*http.Cookie
+	lastResult    []byte
 	authenticated bool
 }
 

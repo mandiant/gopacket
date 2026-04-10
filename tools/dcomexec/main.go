@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -295,13 +298,13 @@ type DCOMExec struct {
 
 	// Persistent DCOM connection state (matches Impacket's architecture)
 	ctx        context.Context
-	epmConn    dcerpc.Conn // endpoint mapper connection
-	oxidConn   dcerpc.Conn // OXID endpoint connection
+	epmConn    dcerpc.Conn              // endpoint mapper connection
+	oxidConn   dcerpc.Conn              // OXID endpoint connection
 	execDisp   idispatch.DispatchClient // IDispatch for executing commands
 	execDISPID int32                    // DISPID for ExecuteShellCommand/ShellExecute
 	topDisp    idispatch.DispatchClient // top-level IDispatch (iMMC)
-	quitDISPID *int32                  // DISPID for Quit (nil for ShellWindows)
-	comVer     *dcom.COMVersion        // resolved COM version
+	quitDISPID *int32                   // DISPID for Quit (nil for ShellWindows)
+	comVer     *dcom.COMVersion         // resolved COM version
 }
 
 // connect establishes the persistent DCOM connection and navigates to the exec interface.
@@ -623,10 +626,10 @@ func (e *DCOMExec) executeViaDCOM(shell, args, pwd string) error {
 			Flags:            CYCLEDISPATCH_METHOD,
 			DispatchParams: &oaut.DispatchParams{
 				Args: []*oaut.Variant{
-					newVariantBSTR("7"),    // WindowState (SW_SHOWMINNOACTIVE)
-					newVariantBSTR(args),   // Parameters
-					newVariantBSTR(pwd),    // Directory
-					newVariantBSTR(shell),  // Command
+					newVariantBSTR("7"),   // WindowState (SW_SHOWMINNOACTIVE)
+					newVariantBSTR(args),  // Parameters
+					newVariantBSTR(pwd),   // Directory
+					newVariantBSTR(shell), // Command
 				},
 			},
 		})
@@ -641,11 +644,11 @@ func (e *DCOMExec) executeViaDCOM(shell, args, pwd string) error {
 		Flags:            CYCLEDISPATCH_METHOD,
 		DispatchParams: &oaut.DispatchParams{
 			Args: []*oaut.Variant{
-				newVariantBSTR("0"),    // vShow (SW_HIDE)
-				newVariantBSTR(""),     // vOperation
-				newVariantBSTR(pwd),    // vDir
-				newVariantBSTR(args),   // vArgs
-				newVariantBSTR(shell),  // File
+				newVariantBSTR("0"),   // vShow (SW_HIDE)
+				newVariantBSTR(""),    // vOperation
+				newVariantBSTR(pwd),   // vDir
+				newVariantBSTR(args),  // vArgs
+				newVariantBSTR(shell), // File
 			},
 		},
 	})

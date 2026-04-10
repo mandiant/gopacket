@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // Package gkdi implements the MS-GKDI (Group Key Distribution Protocol) RPC client.
 // This is used to retrieve group keys for decrypting LAPS v2 encrypted passwords.
 package gkdi
@@ -31,31 +34,31 @@ type Client struct {
 
 // GroupKeyEnvelope represents the response from GetKey.
 type GroupKeyEnvelope struct {
-	Version       uint32
-	Magic         uint32
-	Flags         uint32
-	L0Index       uint32
-	L1Index       uint32
-	L2Index       uint32
-	RootKeyID     [16]byte
-	KdfAlgoLen    uint32
-	KdfParaLen    uint32
-	SecAlgoLen    uint32
-	SecParaLen    uint32
-	PrivKeyLen    uint32
-	PubKeyLen     uint32
-	L1KeyLen      uint32
-	L2KeyLen      uint32
-	DomainLen     uint32
-	ForestLen     uint32
-	KdfAlgo       []byte
-	KdfPara       []byte
-	SecAlgo       []byte
-	SecPara       []byte
-	Domain        []byte
-	Forest        []byte
-	L1Key         []byte
-	L2Key         []byte
+	Version    uint32
+	Magic      uint32
+	Flags      uint32
+	L0Index    uint32
+	L1Index    uint32
+	L2Index    uint32
+	RootKeyID  [16]byte
+	KdfAlgoLen uint32
+	KdfParaLen uint32
+	SecAlgoLen uint32
+	SecParaLen uint32
+	PrivKeyLen uint32
+	PubKeyLen  uint32
+	L1KeyLen   uint32
+	L2KeyLen   uint32
+	DomainLen  uint32
+	ForestLen  uint32
+	KdfAlgo    []byte
+	KdfPara    []byte
+	SecAlgo    []byte
+	SecPara    []byte
+	Domain     []byte
+	Forest     []byte
+	L1Key      []byte
+	L2Key      []byte
 }
 
 // KDFParameter represents the KDF parameters structure.

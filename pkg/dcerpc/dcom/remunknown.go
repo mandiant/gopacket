@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package dcom
 
 import (
@@ -97,7 +100,7 @@ func (i *Interface) RemQueryInterface(iid [16]byte) (*Interface, error) {
 	// iids array data
 	buf.Write(iid[:])
 
-	// TODO: This needs to be called on a connection to the object's OXID
+	// This needs to be called on a connection to the object's OXID
 	// For now, we'll use the main connection
 	resp, err := i.Connection.rpcClient.CallAuth(OpRemQueryInterface, buf.Bytes())
 	if err != nil {

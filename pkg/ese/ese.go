@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package ese
 
 import (
@@ -38,46 +41,46 @@ const (
 
 // Column Types
 const (
-	JET_coltypNil          = 0
-	JET_coltypBit          = 1
-	JET_coltypUnsignedByte = 2
-	JET_coltypShort        = 3
-	JET_coltypLong         = 4
-	JET_coltypCurrency     = 5
-	JET_coltypIEEESingle   = 6
-	JET_coltypIEEEDouble   = 7
-	JET_coltypDateTime     = 8
-	JET_coltypBinary       = 9
-	JET_coltypText         = 10
-	JET_coltypLongBinary   = 11
-	JET_coltypLongText     = 12
-	JET_coltypSLV          = 13
-	JET_coltypUnsignedLong = 14
-	JET_coltypLongLong     = 15
-	JET_coltypGUID         = 16
+	JET_coltypNil           = 0
+	JET_coltypBit           = 1
+	JET_coltypUnsignedByte  = 2
+	JET_coltypShort         = 3
+	JET_coltypLong          = 4
+	JET_coltypCurrency      = 5
+	JET_coltypIEEESingle    = 6
+	JET_coltypIEEEDouble    = 7
+	JET_coltypDateTime      = 8
+	JET_coltypBinary        = 9
+	JET_coltypText          = 10
+	JET_coltypLongBinary    = 11
+	JET_coltypLongText      = 12
+	JET_coltypSLV           = 13
+	JET_coltypUnsignedLong  = 14
+	JET_coltypLongLong      = 15
+	JET_coltypGUID          = 16
 	JET_coltypUnsignedShort = 17
 )
 
 // ColumnTypeName returns the human-readable name for a column type
 func ColumnTypeName(colType uint32) string {
 	names := map[uint32]string{
-		JET_coltypNil:          "NULL",
-		JET_coltypBit:          "Boolean",
-		JET_coltypUnsignedByte: "Unsigned byte",
-		JET_coltypShort:        "Signed short",
-		JET_coltypLong:         "Signed long",
-		JET_coltypCurrency:     "Currency",
-		JET_coltypIEEESingle:   "Single precision FP",
-		JET_coltypIEEEDouble:   "Double precision FP",
-		JET_coltypDateTime:     "DateTime",
-		JET_coltypBinary:       "Binary",
-		JET_coltypText:         "Text",
-		JET_coltypLongBinary:   "Long Binary",
-		JET_coltypLongText:     "Long Text",
-		JET_coltypSLV:          "Obsolete",
-		JET_coltypUnsignedLong: "Unsigned long",
-		JET_coltypLongLong:     "Long long",
-		JET_coltypGUID:         "GUID",
+		JET_coltypNil:           "NULL",
+		JET_coltypBit:           "Boolean",
+		JET_coltypUnsignedByte:  "Unsigned byte",
+		JET_coltypShort:         "Signed short",
+		JET_coltypLong:          "Signed long",
+		JET_coltypCurrency:      "Currency",
+		JET_coltypIEEESingle:    "Single precision FP",
+		JET_coltypIEEEDouble:    "Double precision FP",
+		JET_coltypDateTime:      "DateTime",
+		JET_coltypBinary:        "Binary",
+		JET_coltypText:          "Text",
+		JET_coltypLongBinary:    "Long Binary",
+		JET_coltypLongText:      "Long Text",
+		JET_coltypSLV:           "Obsolete",
+		JET_coltypUnsignedLong:  "Unsigned long",
+		JET_coltypLongLong:      "Long long",
+		JET_coltypGUID:          "GUID",
 		JET_coltypUnsignedShort: "Unsigned short",
 	}
 	if name, ok := names[colType]; ok {
@@ -116,12 +119,12 @@ type Database struct {
 
 // TableDef represents a table definition
 type TableDef struct {
-	Name               string
-	TableID            uint32
-	FatherDataPageNum  uint32
-	Columns            map[uint32]*ColumnDef // ESE column ID -> column def
-	ColumnsByName      map[string]*ColumnDef // column name -> column def
-	db                 *Database
+	Name              string
+	TableID           uint32
+	FatherDataPageNum uint32
+	Columns           map[uint32]*ColumnDef // ESE column ID -> column def
+	ColumnsByName     map[string]*ColumnDef // column name -> column def
+	db                *Database
 }
 
 // ColumnDef represents a column definition

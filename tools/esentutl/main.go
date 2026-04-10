@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -14,10 +17,10 @@ import (
 )
 
 var (
-	debug    = flag.Bool("debug", false, "Turn DEBUG output ON")
-	ts       = flag.Bool("ts", false, "Adds timestamp to every logging output")
-	pageNum  = flag.Int("page", -1, "page to dump (for dump action)")
-	table    = flag.String("table", "", "table to export (for export action)")
+	debug   = flag.Bool("debug", false, "Turn DEBUG output ON")
+	ts      = flag.Bool("ts", false, "Adds timestamp to every logging output")
+	pageNum = flag.Int("page", -1, "page to dump (for dump action)")
+	table   = flag.String("table", "", "table to export (for export action)")
 )
 
 func init() {

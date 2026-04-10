@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package srvsvc
 
 import (
@@ -13,6 +16,7 @@ var UUID = [16]byte{
 	0xc8, 0x4f, 0x32, 0x4b, 0x70, 0x16, 0xd3, 0x01,
 	0x12, 0x78, 0x5a, 0x47, 0xbf, 0x6e, 0xe1, 0x88,
 }
+
 const MajorVersion = 3
 const MinorVersion = 0
 
@@ -25,7 +29,7 @@ const OpNetrServerGetInfo = 21
 // GetInfoLevel101 retrieves and parses basic server info.
 func GetInfoLevel101(client *dcerpc.Client, serverName string) (string, error) {
 	buf := new(bytes.Buffer)
-	
+
 	// Request Marshaling
 	binary.Write(buf, binary.LittleEndian, uint32(0x20000)) // ServerName Ptr
 	utf16Name := utf16.Encode([]rune(serverName))
@@ -126,7 +130,6 @@ func NetrSessionEnum(client *dcerpc.Client) ([]SessionInfo10, error) {
 
 	return parseSessionEnumResponse(resp)
 }
-
 
 func parseSessionEnumResponse(resp []byte) ([]SessionInfo10, error) {
 	if len(resp) < 20 {

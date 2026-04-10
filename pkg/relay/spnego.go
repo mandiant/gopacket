@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -133,10 +136,10 @@ func encodeNegTokenResp(state asn1.Enumerated, mech asn1.ObjectIdentifier, token
 func encodeNegTokenRespAcceptCompleted() []byte {
 	// Manually encode: [1] { SEQUENCE { [0] ENUM { 0 } } }
 	// NegState ENUMERATED accept-completed = 0
-	enumBytes := []byte{0x0a, 0x01, 0x00}                         // ENUMERATED, len=1, value=0
-	taggedEnum := []byte{0xa0, byte(len(enumBytes))}               // [0] EXPLICIT tag
+	enumBytes := []byte{0x0a, 0x01, 0x00}            // ENUMERATED, len=1, value=0
+	taggedEnum := []byte{0xa0, byte(len(enumBytes))} // [0] EXPLICIT tag
 	taggedEnum = append(taggedEnum, enumBytes...)
-	seq := []byte{0x30, byte(len(taggedEnum))}                     // SEQUENCE
+	seq := []byte{0x30, byte(len(taggedEnum))} // SEQUENCE
 	seq = append(seq, taggedEnum...)
 	// Wrap in [1] EXPLICIT context tag
 	return wrapExplicitTag(1, seq)

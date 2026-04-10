@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package tds
 
 import (
@@ -78,8 +81,8 @@ func (p *PreLoginPacket) Marshal() []byte {
 	buf := make([]byte, 0, 256)
 
 	// Version option (token 0)
-	buf = append(buf, 0x00) // Token
-	buf = append(buf, byte(versionOffset>>8), byte(versionOffset)) // Offset (big endian)
+	buf = append(buf, 0x00)                                          // Token
+	buf = append(buf, byte(versionOffset>>8), byte(versionOffset))   // Offset (big endian)
 	buf = append(buf, byte(len(p.Version)>>8), byte(len(p.Version))) // Length
 
 	// Encryption option (token 1)
@@ -151,26 +154,26 @@ func ParsePreLoginResponse(data []byte) (*PreLoginPacket, error) {
 
 // LoginPacket represents a TDS LOGIN7 packet
 type LoginPacket struct {
-	TDSVersion   uint32
-	PacketSize   uint32
-	ClientProgVer uint32
-	ClientPID    uint32
-	ConnectionID uint32
-	OptionFlags1 uint8
-	OptionFlags2 uint8
-	TypeFlags    uint8
-	OptionFlags3 uint8
+	TDSVersion     uint32
+	PacketSize     uint32
+	ClientProgVer  uint32
+	ClientPID      uint32
+	ConnectionID   uint32
+	OptionFlags1   uint8
+	OptionFlags2   uint8
+	TypeFlags      uint8
+	OptionFlags3   uint8
 	ClientTimeZone int32
-	ClientLCID   uint32
-	HostName     string
-	UserName     string
-	Password     string
-	AppName      string
-	ServerName   string
-	CltIntName   string
-	Database     string
-	SSPI         []byte
-	AtchDBFile   string
+	ClientLCID     uint32
+	HostName       string
+	UserName       string
+	Password       string
+	AppName        string
+	ServerName     string
+	CltIntName     string
+	Database       string
+	SSPI           []byte
+	AtchDBFile     string
 }
 
 // encryptPassword encrypts password using TDS password encoding

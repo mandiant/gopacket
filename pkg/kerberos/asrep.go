@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package kerberos
 
 import (
@@ -7,9 +10,9 @@ import (
 	"gopacket/pkg/transport"
 
 	"github.com/jcmturner/gokrb5/v8/config"
+	"github.com/jcmturner/gokrb5/v8/iana/nametype"
 	"github.com/jcmturner/gokrb5/v8/messages"
 	"github.com/jcmturner/gokrb5/v8/types"
-	"github.com/jcmturner/gokrb5/v8/iana/nametype"
 )
 
 // GetASREP fetches the AS-REP for a user and returns the hash.
@@ -31,7 +34,7 @@ func GetASREP(username, domain, kdcHost string, format ...string) (string, error
 
 	// Create Client Principal Name
 	cName := types.NewPrincipalName(nametype.KRB_NT_PRINCIPAL, username)
-	
+
 	// Create Server Principal Name (krbtgt/REALM)
 	sName := types.NewPrincipalName(nametype.KRB_NT_SRV_INST, "krbtgt/"+realm)
 
@@ -62,7 +65,7 @@ func GetASREP(username, domain, kdcHost string, format ...string) (string, error
 		byte(length >> 8),
 		byte(length),
 	}
-	
+
 	if _, err := conn.Write(append(lengthBuf, b...)); err != nil {
 		return "", fmt.Errorf("failed to send AS-REQ: %v", err)
 	}

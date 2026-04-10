@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package svcctl
 
 import (
@@ -22,27 +25,27 @@ const MinorVersion = 0
 
 // Operation numbers
 const (
-	OpRCloseServiceHandle       = 0
-	OpRControlService           = 1
-	OpRDeleteService            = 2
-	OpRLockServiceDatabase      = 3
+	OpRCloseServiceHandle         = 0
+	OpRControlService             = 1
+	OpRDeleteService              = 2
+	OpRLockServiceDatabase        = 3
 	OpRQueryServiceObjectSecurity = 4
-	OpRSetServiceObjectSecurity = 5
-	OpRQueryServiceStatus       = 6
-	OpRSetServiceStatus         = 7
-	OpRUnlockServiceDatabase    = 8
-	OpRNotifyBootConfigStatus   = 9
-	OpRChangeServiceConfigW     = 11
-	OpRCreateServiceW           = 12
-	OpREnumDependentServicesW   = 13
-	OpREnumServicesStatusW      = 14
-	OpROpenSCManagerW           = 15
-	OpROpenServiceW             = 16
-	OpRQueryServiceConfigW      = 17
-	OpRQueryServiceLockStatusW  = 18
-	OpRStartServiceW            = 19
-	OpRGetServiceDisplayNameW   = 20
-	OpRGetServiceKeyNameW       = 21
+	OpRSetServiceObjectSecurity   = 5
+	OpRQueryServiceStatus         = 6
+	OpRSetServiceStatus           = 7
+	OpRUnlockServiceDatabase      = 8
+	OpRNotifyBootConfigStatus     = 9
+	OpRChangeServiceConfigW       = 11
+	OpRCreateServiceW             = 12
+	OpREnumDependentServicesW     = 13
+	OpREnumServicesStatusW        = 14
+	OpROpenSCManagerW             = 15
+	OpROpenServiceW               = 16
+	OpRQueryServiceConfigW        = 17
+	OpRQueryServiceLockStatusW    = 18
+	OpRStartServiceW              = 19
+	OpRGetServiceDisplayNameW     = 20
+	OpRGetServiceKeyNameW         = 21
 )
 
 // Service access rights
@@ -62,10 +65,10 @@ const (
 
 // Service control codes
 const (
-	SERVICE_CONTROL_STOP         = 0x00000001
-	SERVICE_CONTROL_PAUSE        = 0x00000002
-	SERVICE_CONTROL_CONTINUE     = 0x00000003
-	SERVICE_CONTROL_INTERROGATE  = 0x00000004
+	SERVICE_CONTROL_STOP        = 0x00000001
+	SERVICE_CONTROL_PAUSE       = 0x00000002
+	SERVICE_CONTROL_CONTINUE    = 0x00000003
+	SERVICE_CONTROL_INTERROGATE = 0x00000004
 )
 
 // Service states
@@ -116,13 +119,13 @@ const (
 
 // Error codes
 const (
-	ERROR_SUCCESS              = 0
-	ERROR_ACCESS_DENIED        = 5
-	ERROR_INVALID_HANDLE       = 6
-	ERROR_SERVICE_DOES_NOT_EXIST = 1060
-	ERROR_SERVICE_NOT_ACTIVE   = 1062
+	ERROR_SUCCESS                 = 0
+	ERROR_ACCESS_DENIED           = 5
+	ERROR_INVALID_HANDLE          = 6
+	ERROR_SERVICE_DOES_NOT_EXIST  = 1060
+	ERROR_SERVICE_NOT_ACTIVE      = 1062
 	ERROR_SERVICE_ALREADY_RUNNING = 1056
-	ERROR_SERVICE_EXISTS       = 1073
+	ERROR_SERVICE_EXISTS          = 1073
 )
 
 // ServiceStatus represents the status of a service
@@ -260,7 +263,7 @@ func (sc *ServiceController) CreateService(serviceName, displayName, binaryPath 
 	// Response: lpTagId (4 bytes) + lpServiceHandle (20 bytes) + return value (4 bytes)
 	// Actually return value is last 4 bytes.
 	// But MS-SCMR says: lpTagId (4), lpServiceHandle (20), ReturnValue (4). Total 28 bytes minimum.
-	
+
 	retVal := binary.LittleEndian.Uint32(resp[len(resp)-4:])
 	if retVal != ERROR_SUCCESS {
 		return nil, fmt.Errorf("CreateService failed: 0x%08x", retVal)

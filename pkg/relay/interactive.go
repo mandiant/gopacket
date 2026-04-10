@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -386,4 +389,3 @@ func runMSSQLShell(conn net.Conn, session interface{}) {
 		fmt.Fprintf(conn, "SQL> ")
 	}
 }
-

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package ntlm
 
 import (
@@ -357,7 +360,7 @@ func CreateAuthenticateMessage(challenge []byte, username, password, domain stri
 	// Store negotiate message for MIC calculation
 	c.Negotiate()
 
-	// TODO: Add channel binding token support
+	// Future enhancement: Add channel binding token support
 	// For now, CBT is not implemented in the existing code
 
 	return c.Authenticate(challenge)

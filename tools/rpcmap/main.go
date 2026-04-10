@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -14,7 +17,6 @@ import (
 	"gopacket/pkg/dcerpc"
 	"gopacket/pkg/dcerpc/epmapper"
 	"gopacket/pkg/transport"
-
 )
 
 // MGMT interface UUID: afa8bd80-7d8a-11c9-bef4-08002b102989

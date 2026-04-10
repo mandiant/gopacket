@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package drsuapi
 
 import (
@@ -18,12 +21,12 @@ import (
 
 // DSNAME represents an AD object name
 type DSNAME struct {
-	StructLen    uint32
-	SidLen       uint32
-	Guid         [16]byte
-	Sid          []byte
-	NameLen      uint32
-	StringName   string
+	StructLen  uint32
+	SidLen     uint32
+	Guid       [16]byte
+	Sid        []byte
+	NameLen    uint32
+	StringName string
 }
 
 // ReplicatedObject contains the replicated attributes of an AD object
@@ -33,11 +36,11 @@ type ReplicatedObject struct {
 	SAMAccountName     string
 	ObjectSid          []byte
 	RID                uint32
-	NTHash             []byte // Decrypted NT hash (16 bytes)
-	LMHash             []byte // Decrypted LM hash (16 bytes)
-	NTHashHistory      [][]byte // Historical NT hashes (each 16 bytes)
-	LMHashHistory      [][]byte // Historical LM hashes (each 16 bytes)
-	SupplementalCreds  []byte // Decrypted supplementalCredentials
+	NTHash             []byte        // Decrypted NT hash (16 bytes)
+	LMHash             []byte        // Decrypted LM hash (16 bytes)
+	NTHashHistory      [][]byte      // Historical NT hashes (each 16 bytes)
+	LMHashHistory      [][]byte      // Historical LM hashes (each 16 bytes)
+	SupplementalCreds  []byte        // Decrypted supplementalCredentials
 	KerberosKeys       []KerberosKey // Parsed Kerberos keys from supplementalCredentials
 	UserAccountControl uint32
 	PwdLastSet         int64 // Windows FILETIME (100-nanosecond intervals since 1601-01-01)
@@ -248,8 +251,8 @@ func writeDSNAME(buf *bytes.Buffer, nameOrGUID string) {
 	binary.Write(buf, binary.LittleEndian, charCount)
 
 	// DSNAME structure fields
-	binary.Write(buf, binary.LittleEndian, structLen)  // structLen
-	binary.Write(buf, binary.LittleEndian, uint32(0))  // SidLen = 0
+	binary.Write(buf, binary.LittleEndian, structLen) // structLen
+	binary.Write(buf, binary.LittleEndian, uint32(0)) // SidLen = 0
 
 	// Write GUID (16 bytes)
 	if guid != nil {
@@ -258,8 +261,8 @@ func writeDSNAME(buf *bytes.Buffer, nameOrGUID string) {
 		buf.Write(make([]byte, 16))
 	}
 
-	buf.Write(make([]byte, 28))                        // Sid = empty (28 bytes when SidLen=0)
-	binary.Write(buf, binary.LittleEndian, nameLen)    // NameLen
+	buf.Write(make([]byte, 28))                     // Sid = empty (28 bytes when SidLen=0)
+	binary.Write(buf, binary.LittleEndian, nameLen) // NameLen
 
 	// Write StringName (even if empty, we need the null terminator)
 	if nameLen > 0 {

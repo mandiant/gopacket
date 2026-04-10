@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -12,7 +15,7 @@ import (
 )
 
 const (
-	payloadSize = 156
+	payloadSize  = 156
 	protocolICMP = 1
 )
 

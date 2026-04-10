@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -381,10 +384,10 @@ func buildSessionSetupResponseWithFlags(messageID uint64, sessionID uint64, stat
 	}
 	bodySize := 8 + sbLen
 	body := make([]byte, bodySize)
-	binary.LittleEndian.PutUint16(body[0:2], 9) // StructureSize
-	binary.LittleEndian.PutUint16(body[2:4], sessionFlags) // SessionFlags
-	secBufOffset := uint16(64 + 8) // Header(64) + body fixed part
-	binary.LittleEndian.PutUint16(body[4:6], secBufOffset) // SecurityBufferOffset
+	binary.LittleEndian.PutUint16(body[0:2], 9)             // StructureSize
+	binary.LittleEndian.PutUint16(body[2:4], sessionFlags)  // SessionFlags
+	secBufOffset := uint16(64 + 8)                          // Header(64) + body fixed part
+	binary.LittleEndian.PutUint16(body[4:6], secBufOffset)  // SecurityBufferOffset
 	binary.LittleEndian.PutUint16(body[6:8], uint16(sbLen)) // SecurityBufferLength
 	if sbLen > 0 {
 		copy(body[8:], securityBuffer)

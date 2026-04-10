@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -517,7 +520,7 @@ func (e *PSExec) pipeWriterWithEcho(name, pipeName string, input io.Reader, done
 
 			// Handle help command
 			if strings.ToLower(line) == "help" {
-				fmt.Println(`
+				fmt.Print(`
  lcd {path}                 - changes the current local directory to {path}
  exit                       - terminates the server process (and this session)
  ! {cmd}                    - executes a local shell cmd
@@ -661,6 +664,3 @@ func generateRandomString(length int) string {
 	}
 	return string(b)
 }
-
-// Unused but kept for reference
-var _ = bytes.NewReader

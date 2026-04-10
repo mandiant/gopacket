@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 // Package remcomsvc provides the RemComSvc binary and protocol structures
 // for psexec-style remote command execution via named pipes.
 //

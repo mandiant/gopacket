@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package kerberos
 
 import (
@@ -18,35 +21,35 @@ import (
 
 // PAC Buffer Types (MS-PAC 2.4)
 const (
-	PACTypeLogonInfo       = 1
-	PACTypeCredentialInfo  = 2
-	PACTypeServerChecksum  = 6
-	PACTypeKDCChecksum     = 7
-	PACTypeClientInfo      = 10
-	PACTypeDelegationInfo  = 11
-	PACTypeUPNDNSInfo      = 12
-	PACTypeAttributesInfo  = 17
-	PACTypeRequestorSID    = 18
+	PACTypeLogonInfo      = 1
+	PACTypeCredentialInfo = 2
+	PACTypeServerChecksum = 6
+	PACTypeKDCChecksum    = 7
+	PACTypeClientInfo     = 10
+	PACTypeDelegationInfo = 11
+	PACTypeUPNDNSInfo     = 12
+	PACTypeAttributesInfo = 17
+	PACTypeRequestorSID   = 18
 )
 
 // Checksum Types
 const (
-	ChecksumHMACMD5    = 0xFFFFFF76 // -138 as uint32
+	ChecksumHMACMD5      = 0xFFFFFF76 // -138 as uint32
 	ChecksumSHA196AES128 = 15
 	ChecksumSHA196AES256 = 16
 )
 
 // User Account Control Flags
 const (
-	UACNormalAccount       = 0x00000010
-	UACDontExpirePassword  = 0x00000200
+	UACNormalAccount      = 0x00000010
+	UACDontExpirePassword = 0x00000200
 )
 
 // Group Attributes
 const (
-	SEGroupMandatory         = 0x00000001
-	SEGroupEnabledByDefault  = 0x00000002
-	SEGroupEnabled           = 0x00000004
+	SEGroupMandatory        = 0x00000001
+	SEGroupEnabledByDefault = 0x00000002
+	SEGroupEnabled          = 0x00000004
 )
 
 // User Flags
@@ -158,41 +161,41 @@ type ExtraSID struct {
 // PAC represents a Privilege Attribute Certificate
 type PAC struct {
 	// User information
-	Username       string
-	Domain         string
-	DomainSID      *SID
-	UserID         uint32
-	PrimaryGroupID uint32
-	Groups         []uint32
+	Username        string
+	Domain          string
+	DomainSID       *SID
+	UserID          uint32
+	PrimaryGroupID  uint32
+	Groups          []uint32
 	GroupAttributes []uint32
-	ExtraSIDs      []*SID
-	ExtraSIDAttrs  []uint32
+	ExtraSIDs       []*SID
+	ExtraSIDAttrs   []uint32
 
-	FullName             string
-	LogonScript          string
-	ProfilePath          string
-	HomeDirectory        string
-	HomeDirectoryDrive   string
+	FullName           string
+	LogonScript        string
+	ProfilePath        string
+	HomeDirectory      string
+	HomeDirectoryDrive string
 
-	LogonServer    string
-	LogonCount     uint16
-	BadPasswordCount uint16
+	LogonServer        string
+	LogonCount         uint16
+	BadPasswordCount   uint16
 	UserAccountControl uint32
-	UserFlags      uint32
-	UserSessionKey [16]byte
-	SubAuthStatus  uint32
-	Reserved3      uint32
-	FailedILogonCount uint32
+	UserFlags          uint32
+	UserSessionKey     [16]byte
+	SubAuthStatus      uint32
+	Reserved3          uint32
+	FailedILogonCount  uint32
 
 	// Timestamps
-	LogonTime              time.Time
-	LogoffTime             time.Time
-	KickOffTime            time.Time
-	PasswordLastSet        time.Time
-	PasswordCanChange      time.Time
-	PasswordMustChange     time.Time
-	LastSuccessfulILogon   time.Time
-	LastFailedILogon       time.Time
+	LogonTime            time.Time
+	LogoffTime           time.Time
+	KickOffTime          time.Time
+	PasswordLastSet      time.Time
+	PasswordCanChange    time.Time
+	PasswordMustChange   time.Time
+	LastSuccessfulILogon time.Time
+	LastFailedILogon     time.Time
 
 	// UPN_DNS_INFO (type 12)
 	UPN            string
@@ -214,17 +217,17 @@ type PAC struct {
 	ClientInfoName string
 
 	// Delegation Info (type 11)
-	S4U2ProxyTarget     string
-	TransitedServices   []string
+	S4U2ProxyTarget   string
+	TransitedServices []string
 
 	// Signature data
 	ServerChecksumType uint32
 	ServerChecksumData []byte
 	KDCChecksumType    uint32
 	KDCChecksumData    []byte
-	ServerKey []byte
-	KDCKey    []byte
-	EncType   int32
+	ServerKey          []byte
+	KDCKey             []byte
+	EncType            int32
 
 	// Credential Info (Encrypted)
 	CredentialInfo []byte
@@ -259,54 +262,34 @@ func (p *PAC) DecryptCredentialInfo(key []byte) ([]byte, error) {
 	if len(p.CredentialInfo) < 24 { // Version(4) + EType(4) + Data(16+)
 		return nil, fmt.Errorf("credential info too short")
 	}
-	
-	// version := binary.LittleEndian.Uint32(p.CredentialInfo[0:4])
+
 	etype := int32(binary.LittleEndian.Uint32(p.CredentialInfo[4:8]))
-	
+
 	// Skip 8 bytes header (Version + EType)
 	cipherText := p.CredentialInfo[8:]
-	
-	// Decrypt
-	// Note: Usage for PAC_CREDENTIAL_DATA is 16 (KERB_NON_KERB_SALT) ?? 
-	// Actually typical usage is similar to Ticket/EncPart.
-	// For MS-PAC, it uses specific crypto. 
-	
-	// Impacket uses Key usage 16 (KERB_NON_KERB_SALT)
-	// But let's check standard crypto.
-	
-	// Simplified decryption for RC4 (EType 23)
+
+	// RC4-HMAC (EType 23) per RFC 4757:
+	//   K1 = HMAC-MD5(Key, Usage)
+	//   K3 = HMAC-MD5(K1, Checksum)
+	//   Plaintext = RC4(K3, Ciphertext[16:])
 	if etype == 23 {
-		// RC4-HMAC
-		// Checksum is first 16 bytes
+		// Checksum is the first 16 bytes, ciphertext follows.
 		if len(cipherText) < 16 {
 			return nil, fmt.Errorf("ciphertext too short")
 		}
-		// checksum := cipherText[:16]
 		data := cipherText[16:]
-		
-		// RC4 decrypt
-		k1 := hmac.New(md5.New, key)
-		k1.Write(make([]byte, 4)) // usage 0 ?? 
-		// Actually, for RC4-HMAC exp, it handles usage internally often.
-		// Let's rely on standard crypto lib if possible, but here we might need manual.
-		
-		// K1 = HMAC-MD5(Key, 0x00000000) ??
-		// Standard RC4-HMAC:
-		// K1 = HMAC-MD5(Key, Usage)
-		// K3 = HMAC-MD5(K1, Checksum)
-		// RC4(K3, Data)
-		
-		// Usage is likely 0
-		usage := make([]byte, 4) // 0
-		
+
+		// Key usage 0 is used for PAC server checksum data.
+		usage := make([]byte, 4)
+
 		h := hmac.New(md5.New, key)
 		h.Write(usage)
 		k1Hash := h.Sum(nil)
-		
+
 		h2 := hmac.New(md5.New, k1Hash)
 		h2.Write(cipherText[:16]) // Checksum
 		k3 := h2.Sum(nil)
-		
+
 		decrypted := make([]byte, len(data))
 		rc4Cipher, err := rc4.NewCipher(k3)
 		if err != nil {
@@ -315,7 +298,7 @@ func (p *PAC) DecryptCredentialInfo(key []byte) ([]byte, error) {
 		rc4Cipher.XORKeyStream(decrypted, data)
 		return decrypted, nil
 	}
-	
+
 	return nil, fmt.Errorf("unsupported encryption type: %d", etype)
 }
 
@@ -501,7 +484,7 @@ func (p *PAC) marshalLogonInfo() ([]byte, error) {
 
 	// Private Header (length placeholder + filler)
 	lenPos := buf.Len()
-	binary.Write(&buf, binary.LittleEndian, uint32(0)) // Will fill in later
+	binary.Write(&buf, binary.LittleEndian, uint32(0))          // Will fill in later
 	binary.Write(&buf, binary.LittleEndian, uint32(0xCCCCCCCC)) // Filler (matches Impacket)
 
 	startPos := buf.Len()
@@ -510,12 +493,12 @@ func (p *PAC) marshalLogonInfo() ([]byte, error) {
 	binary.Write(&buf, binary.LittleEndian, uint32(0x0000498c)) // Referent ID
 
 	// KERB_VALIDATION_INFO fixed portion
-	writeFileTime(&buf, p.LogonTime)              // LogonTime
-	writeFileTimeNever(&buf)                      // LogoffTime (never)
-	writeFileTimeNever(&buf)                      // KickOffTime (never)
-	writeFileTime(&buf, p.LogonTime)              // PasswordLastSet
-	writeFileTimeZero(&buf)                       // PasswordCanChange (zero = not set)
-	writeFileTimeNever(&buf)                      // PasswordMustChange (never)
+	writeFileTime(&buf, p.LogonTime) // LogonTime
+	writeFileTimeNever(&buf)         // LogoffTime (never)
+	writeFileTimeNever(&buf)         // KickOffTime (never)
+	writeFileTime(&buf, p.LogonTime) // PasswordLastSet
+	writeFileTimeZero(&buf)          // PasswordCanChange (zero = not set)
+	writeFileTimeNever(&buf)         // PasswordMustChange (never)
 
 	// String headers (Length, MaxLength, Pointer)
 	refID := uint32(0x00020000)
@@ -675,9 +658,9 @@ func writeUnicodeStringHeader(buf *bytes.Buffer, s string, refID *uint32) {
 func writeUnicodeStringContent(buf *bytes.Buffer, s string) {
 	// Always write the conformant array header, even for empty strings
 	chars := uint32(len(s))
-	binary.Write(buf, binary.LittleEndian, chars) // MaxCount
+	binary.Write(buf, binary.LittleEndian, chars)     // MaxCount
 	binary.Write(buf, binary.LittleEndian, uint32(0)) // Offset
-	binary.Write(buf, binary.LittleEndian, chars) // ActualCount
+	binary.Write(buf, binary.LittleEndian, chars)     // ActualCount
 
 	if len(s) == 0 {
 		return
@@ -905,23 +888,23 @@ func ParsePAC(data []byte) (*PAC, error) {
 	p := &PAC{
 		EncType: 23, // Default, updated if Signature found
 	}
-	
+
 	for i := uint32(0); i < bufferCount; i++ {
 		offset := 8 + i*16
 		if len(data) < int(offset+16) {
 			return nil, fmt.Errorf("PAC header too short")
 		}
-		
+
 		bufType := binary.LittleEndian.Uint32(data[offset:])
 		bufSize := binary.LittleEndian.Uint32(data[offset+4:])
 		bufOffset := binary.LittleEndian.Uint64(data[offset+8:])
-		
+
 		if uint64(len(data)) < bufOffset+uint64(bufSize) {
 			continue // Skip invalid buffers
 		}
-		
+
 		bufData := data[bufOffset : bufOffset+uint64(bufSize)]
-		
+
 		switch bufType {
 		case PACTypeClientInfo:
 			p.parseClientInfo(bufData)
@@ -943,7 +926,7 @@ func ParsePAC(data []byte) (*PAC, error) {
 			p.parseRequestorSID(bufData)
 		}
 	}
-	
+
 	return p, nil
 }
 
@@ -1349,11 +1332,11 @@ func ParseNDRSID(data []byte) (*SID, int, error) {
 }
 
 func (ft FileTime) Time() time.Time {
-    ns := int64(ft.High)<<32 | int64(ft.Low)
+	ns := int64(ft.High)<<32 | int64(ft.Low)
 	// Windows epoch 1601-01-01
-    const epochDiff = 116444736000000000
+	const epochDiff = 116444736000000000
 	if ns == 0 || ns == 0x7FFFFFFFFFFFFFFF {
 		return time.Time{}
 	}
-    return time.Unix(0, (ns-epochDiff)*100).UTC()
+	return time.Unix(0, (ns-epochDiff)*100).UTC()
 }

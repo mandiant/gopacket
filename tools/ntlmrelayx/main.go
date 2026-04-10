@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -129,11 +132,11 @@ func main() {
 	}
 
 	cfg := &relay.Config{
-		TargetAddr: *target,
-		ListenAddr: *listen,
-		Attack:     *attack,
-		Command:    *command,
-		ExeFile:    *exeFile,
+		TargetAddr:  *target,
+		ListenAddr:  *listen,
+		Attack:      *attack,
+		Command:     *command,
+		ExeFile:     *exeFile,
 		Interactive: *interactive,
 
 		// Server ports

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package ldap
 
 import (
@@ -9,8 +12,8 @@ import (
 
 // UserAccountControl flags for delegation
 const (
-	UF_ACCOUNTDISABLE                       = 0x00000002
-	UF_TRUSTED_FOR_DELEGATION               = 0x00080000 // Unconstrained delegation
+	UF_ACCOUNTDISABLE                         = 0x00000002
+	UF_TRUSTED_FOR_DELEGATION                 = 0x00080000 // Unconstrained delegation
 	UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION = 0x01000000 // Protocol transition
 )
 
@@ -18,10 +21,10 @@ const (
 type DelegationType string
 
 const (
-	DelegationUnconstrained                  DelegationType = "Unconstrained"
-	DelegationConstrainedWithTransition      DelegationType = "Constrained w/ Protocol Transition"
-	DelegationConstrainedWithoutTransition   DelegationType = "Constrained"
-	DelegationResourceBased                  DelegationType = "Resource-Based Constrained"
+	DelegationUnconstrained                DelegationType = "Unconstrained"
+	DelegationConstrainedWithTransition    DelegationType = "Constrained w/ Protocol Transition"
+	DelegationConstrainedWithoutTransition DelegationType = "Constrained"
+	DelegationResourceBased                DelegationType = "Resource-Based Constrained"
 )
 
 // DelegationEntry represents a delegation relationship found in AD

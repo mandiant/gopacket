@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package kerberos
 
 import (
@@ -210,7 +213,7 @@ func buildPAEncTimestamp(key []byte, encType int32) (types.PAData, error) {
 	// }
 	timestamp := types.PAEncTSEnc{
 		PATimestamp: now,
-		PAUSec:     int(now.Nanosecond() / 1000),
+		PAUSec:      int(now.Nanosecond() / 1000),
 	}
 
 	tsBytes, err := asn1.Marshal(timestamp)

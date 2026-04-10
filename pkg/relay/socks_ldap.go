@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -15,11 +18,11 @@ import (
 
 // LDAP message tags
 const (
-	ldapTagSearchRequest  = 3
-	ldapTagSearchDone     = 5
-	ldapTagSearchEntry    = 4
-	ldapTagUnbindRequest  = 2
-	ldapTagExtendedReq    = 23
+	ldapTagSearchRequest = 3
+	ldapTagSearchDone    = 5
+	ldapTagSearchEntry   = 4
+	ldapTagUnbindRequest = 2
+	ldapTagExtendedReq   = 23
 )
 
 // StartTLS OID

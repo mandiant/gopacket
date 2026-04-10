@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package registry
 
 import (
@@ -23,17 +26,12 @@ type LSASecret struct {
 
 // CachedCredential represents a cached domain credential
 type CachedCredential struct {
-	Username       string
-	Domain         string
-	DNSDomainName  string
-	UPN            string
-	EncryptedHash  []byte
-	DecryptedHash  []byte
-}
-
-// SaveHiveToFile saves the hive data to a file for debugging
-func SaveHiveToFile(hive *Hive, filename string) error {
-	return nil // stub for now
+	Username      string
+	Domain        string
+	DNSDomainName string
+	UPN           string
+	EncryptedHash []byte
+	DecryptedHash []byte
 }
 
 // DumpLSASecrets extracts LSA secrets from a SECURITY hive
@@ -453,9 +451,9 @@ func ParseDPAPISecret(secret []byte) *DPAPIKeys {
 
 // DomainInfo contains domain information from the SECURITY hive
 type DomainInfo struct {
-	DNSDomainName string // e.g., "liquorstore.local"
-	NetBIOSName   string // e.g., "LIQUORSTORE"
-	ComputerName  string // e.g., "ALCOHOLDC"
+	DNSDomainName string // e.g., "corp.local"
+	NetBIOSName   string // e.g., "CORP"
+	ComputerName  string // e.g., "DC01"
 }
 
 // GetDomainInfo extracts domain information from the SECURITY hive
@@ -540,7 +538,7 @@ func DeriveMachineAccountKeys(password []byte, realm, computerName string) *Mach
 
 	// Derive Kerberos keys
 	// Salt for machine accounts: <REALM_FQDN_UPPER>host<hostname_lower>.<realm_fqdn_lower>
-	// Example: LIQUORSTORE.LOCALhostalcoholdc.liquorstore.local
+	// Example: CORP.LOCALhostdc01.corp.local
 	salt := strings.ToUpper(realm) + "host" + strings.ToLower(computerName) + "." + strings.ToLower(realm)
 
 	keys.AES256Key = deriveKerberosAESKey(utf8Password, salt, 32)

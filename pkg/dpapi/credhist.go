@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package dpapi
 
 import (
@@ -15,27 +18,27 @@ import (
 
 // CredHistFile represents a CREDHIST file containing a chain of credential history entries
 type CredHistFile struct {
-	Version  uint32
-	GUID     string
-	Entries  []*CredHistEntry
+	Version uint32
+	GUID    string
+	Entries []*CredHistEntry
 }
 
 // CredHistEntry represents a single entry in the credential history chain
 type CredHistEntry struct {
-	Version        uint32
-	GUID           string
-	UserSID        string
-	HashAlgo       uint32
-	CryptAlgo      uint32
-	Salt           []byte
-	Rounds         uint32
-	HMACLen        uint32
-	CipherTextLen  uint32
-	CipherText     []byte
-	DecryptedKey   []byte
-	DecryptedHMAC  []byte
-	SHA1           []byte // SHA1 of password used
-	NTHash         []byte // NTLM hash of password
+	Version       uint32
+	GUID          string
+	UserSID       string
+	HashAlgo      uint32
+	CryptAlgo     uint32
+	Salt          []byte
+	Rounds        uint32
+	HMACLen       uint32
+	CipherTextLen uint32
+	CipherText    []byte
+	DecryptedKey  []byte
+	DecryptedHMAC []byte
+	SHA1          []byte // SHA1 of password used
+	NTHash        []byte // NTLM hash of password
 }
 
 // ParseCredHistFile parses a CREDHIST file

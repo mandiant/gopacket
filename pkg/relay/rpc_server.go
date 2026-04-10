@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -13,15 +16,15 @@ import (
 
 // DCE/RPC packet type constants
 const (
-	rpcPktRequest        = 0
-	rpcPktResponse       = 2
-	rpcPktFault          = 3
-	rpcPktBind           = 11
-	rpcPktBindAck        = 12
-	rpcPktBindNak        = 13
-	rpcPktAlterContext    = 14
-	rpcPktAlterContextR  = 15
-	rpcPktAuth3          = 16
+	rpcPktRequest       = 0
+	rpcPktResponse      = 2
+	rpcPktFault         = 3
+	rpcPktBind          = 11
+	rpcPktBindAck       = 12
+	rpcPktBindNak       = 13
+	rpcPktAlterContext  = 14
+	rpcPktAlterContextR = 15
+	rpcPktAuth3         = 16
 )
 
 // DCE/RPC auth types
@@ -29,7 +32,7 @@ const (
 	rpcAuthNone         = 0
 	rpcAuthWinNT        = 10 // RPC_C_AUTHN_WINNT (NTLMSSP)
 	rpcAuthDefault      = 0xFF
-	rpcAuthGSSNegotiate = 9  // SPNEGO
+	rpcAuthGSSNegotiate = 9 // SPNEGO
 )
 
 // NTLM message types
@@ -72,8 +75,8 @@ var rpcEPMUUID = [16]byte{
 
 // Status codes for RPC fault/nak
 const (
-	rpcStatusAccessDenied   = 0x00000005
-	rpcStatusNoAuth         = 0x1c010002
+	rpcStatusAccessDenied    = 0x00000005
+	rpcStatusNoAuth          = 0x1c010002
 	rpcStatusUnsupportedType = 0x1c000013
 )
 
@@ -551,12 +554,12 @@ func (s *RPCRelayServer) buildServerAlive2Response(hdr rpcCommonHeader) []byte {
 	// Reserved(4)=0
 	var body bytes.Buffer
 	// COMVERSION
-	binary.Write(&body, binary.LittleEndian, uint16(5))  // major
-	binary.Write(&body, binary.LittleEndian, uint16(7))  // minor
+	binary.Write(&body, binary.LittleEndian, uint16(5)) // major
+	binary.Write(&body, binary.LittleEndian, uint16(7)) // minor
 	// Reserved
 	binary.Write(&body, binary.LittleEndian, uint32(0))
 	// DUALSTRINGARRAY
-	binary.Write(&body, binary.LittleEndian, uint16(len(dsaData)/2)) // wNumEntries (in wchar_t units)
+	binary.Write(&body, binary.LittleEndian, uint16(len(dsaData)/2))    // wNumEntries (in wchar_t units)
 	binary.Write(&body, binary.LittleEndian, uint16(wSecurityOffset/2)) // wSecurityOffset
 	body.Write(dsaData)
 	// HRESULT
@@ -629,8 +632,8 @@ func rpcBuildBindAck(reqHdr rpcCommonHeader, ctxResults []rpcCtxItemResult, auth
 	// MaxXmitFrag(2) + MaxRecvFrag(2) + AssocGroup(4) + SecondaryAddr(variable) + CtxResults
 
 	var pduData bytes.Buffer
-	binary.Write(&pduData, binary.LittleEndian, uint16(4280))   // max_xmit_frag
-	binary.Write(&pduData, binary.LittleEndian, uint16(4280))   // max_recv_frag
+	binary.Write(&pduData, binary.LittleEndian, uint16(4280))       // max_xmit_frag
+	binary.Write(&pduData, binary.LittleEndian, uint16(4280))       // max_recv_frag
 	binary.Write(&pduData, binary.LittleEndian, uint32(0x12345678)) // assoc_group
 
 	// Secondary address (port string): "9999\0" padded to 4-byte boundary
@@ -645,9 +648,9 @@ func rpcBuildBindAck(reqHdr rpcCommonHeader, ctxResults []rpcCtxItemResult, auth
 
 	// Context result list
 	pduData.WriteByte(byte(len(ctxResults))) // num results
-	pduData.WriteByte(0)                      // reserved
-	pduData.WriteByte(0)                      // reserved
-	pduData.WriteByte(0)                      // reserved
+	pduData.WriteByte(0)                     // reserved
+	pduData.WriteByte(0)                     // reserved
+	pduData.WriteByte(0)                     // reserved
 
 	for _, r := range ctxResults {
 		binary.Write(&pduData, binary.LittleEndian, r.Result)
@@ -675,10 +678,10 @@ func rpcBuildBindAck(reqHdr rpcCommonHeader, ctxResults []rpcCtxItemResult, auth
 
 		// Build sec_trailer
 		var secBuf bytes.Buffer
-		secBuf.WriteByte(authType)    // auth_type
-		secBuf.WriteByte(authLevel)   // auth_level
-		secBuf.WriteByte(byte(pad))   // auth_pad_len
-		secBuf.WriteByte(0)           // reserved
+		secBuf.WriteByte(authType)                            // auth_type
+		secBuf.WriteByte(authLevel)                           // auth_level
+		secBuf.WriteByte(byte(pad))                           // auth_pad_len
+		secBuf.WriteByte(0)                                   // reserved
 		binary.Write(&secBuf, binary.LittleEndian, authCtxID) // auth_ctx_id
 		secTrailerBytes = secBuf.Bytes()
 
@@ -690,14 +693,14 @@ func rpcBuildBindAck(reqHdr rpcCommonHeader, ctxResults []rpcCtxItemResult, auth
 	fragLen := 16 + len(pduBody) + len(secTrailerBytes) + len(authDataBytes)
 
 	// Write common header
-	binary.Write(&buf, binary.LittleEndian, uint8(5))         // major version
-	binary.Write(&buf, binary.LittleEndian, uint8(0))         // minor version
-	binary.Write(&buf, binary.LittleEndian, respType)         // packet type
+	binary.Write(&buf, binary.LittleEndian, uint8(5))           // major version
+	binary.Write(&buf, binary.LittleEndian, uint8(0))           // minor version
+	binary.Write(&buf, binary.LittleEndian, respType)           // packet type
 	binary.Write(&buf, binary.LittleEndian, reqHdr.PacketFlags) // flags
 	buf.Write(reqHdr.DataRep[:])                                // data rep
-	binary.Write(&buf, binary.LittleEndian, uint16(fragLen))  // frag_length
-	binary.Write(&buf, binary.LittleEndian, authLen)          // auth_length
-	binary.Write(&buf, binary.LittleEndian, reqHdr.CallID)    // call_id
+	binary.Write(&buf, binary.LittleEndian, uint16(fragLen))    // frag_length
+	binary.Write(&buf, binary.LittleEndian, authLen)            // auth_length
+	binary.Write(&buf, binary.LittleEndian, reqHdr.CallID)      // call_id
 
 	// PDU body
 	buf.Write(pduBody)

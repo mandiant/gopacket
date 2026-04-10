@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package dpapi
 
 import (
@@ -58,15 +61,15 @@ type VaultPolicy struct {
 
 // VaultCredential represents a VCRD file structure
 type VaultCredential struct {
-	SchemaGUID      string
-	Unknown1        uint32
-	LastWritten     uint64
-	Unknown2        uint32
-	Unknown3        uint32
-	FriendlyName    string
-	AttributeCount  uint32
-	Attributes      []*VaultAttribute
-	DecryptedClear  []byte
+	SchemaGUID     string
+	Unknown1       uint32
+	LastWritten    uint64
+	Unknown2       uint32
+	Unknown3       uint32
+	FriendlyName   string
+	AttributeCount uint32
+	Attributes     []*VaultAttribute
+	DecryptedClear []byte
 }
 
 // VaultAttribute represents an attribute in a vault credential

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package kerberos
 
 import (
@@ -772,7 +775,6 @@ func forceForwardable(ticket *messages.Ticket, req *STRequest) error {
 	ticket.EncPart.Cipher = newCipher
 	return nil
 }
-
 
 // setKDCFlagBytes sets specific bit positions in a 4-byte KDC options field.
 func setKDCFlagBytes(positions ...int) []byte {

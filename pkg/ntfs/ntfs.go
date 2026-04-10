@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package ntfs
 
 import (
@@ -27,15 +30,15 @@ const (
 
 // File attribute flags
 const (
-	FileAttrReadOnly          = 0x0001
-	FileAttrHidden            = 0x0002
-	FileAttrSystem            = 0x0004
-	FileAttrDirectory         = 0x0010
-	FileAttrArchive           = 0x0020
-	FileAttrCompressed        = 0x0800
-	FileAttrEncrypted         = 0x4000
-	FileAttrSparse            = 0x0200
-	FileAttrI30IndexPresent   = 0x10000000
+	FileAttrReadOnly        = 0x0001
+	FileAttrHidden          = 0x0002
+	FileAttrSystem          = 0x0004
+	FileAttrDirectory       = 0x0010
+	FileAttrArchive         = 0x0020
+	FileAttrCompressed      = 0x0800
+	FileAttrEncrypted       = 0x4000
+	FileAttrSparse          = 0x0200
+	FileAttrI30IndexPresent = 0x10000000
 )
 
 // File name types
@@ -97,8 +100,8 @@ type Attribute struct {
 	// Resident
 	Value []byte
 	// Non-resident
-	DataRuns []DataRun
-	DataSize uint64
+	DataRuns  []DataRun
+	DataSize  uint64
 	AllocSize uint64
 	InitSize  uint64
 }
@@ -174,14 +177,14 @@ func printableAttrs(fa uint32) string {
 
 // Volume represents an NTFS volume
 type Volume struct {
-	fd              *os.File
-	BytesPerSector  uint16
+	fd                *os.File
+	BytesPerSector    uint16
 	SectorsPerCluster uint8
-	MFTStart        int64
-	RecordSize      int64
-	IndexBlockSize  int64
-	SectorSize      int64
-	mftINode        *INode
+	MFTStart          int64
+	RecordSize        int64
+	IndexBlockSize    int64
+	SectorSize        int64
+	mftINode          *INode
 }
 
 // Open opens an NTFS volume or image file for reading

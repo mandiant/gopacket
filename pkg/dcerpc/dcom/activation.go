@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package dcom
 
 import (
@@ -14,8 +17,8 @@ type RemoteSCMActivator struct {
 
 // OpNum for IRemoteSCMActivator
 const (
-	OpRemoteGetClassObject    = 3
-	OpRemoteCreateInstance    = 4
+	OpRemoteGetClassObject = 3
+	OpRemoteCreateInstance = 4
 )
 
 // RemoteCreateInstance activates a COM class and returns an interface pointer.
@@ -40,7 +43,7 @@ func (s *RemoteSCMActivator) RemoteCreateInstance(clsid, iid [16]byte) (*Interfa
 	// - ulCntData (4)
 	// - conformant array max count (4)
 	// - abData (variable)
-	binary.Write(buf, binary.LittleEndian, uint32(0x00020000)) // Referent ID
+	binary.Write(buf, binary.LittleEndian, uint32(0x00020000))   // Referent ID
 	binary.Write(buf, binary.LittleEndian, uint32(len(actBlob))) // ulCntData
 	binary.Write(buf, binary.LittleEndian, uint32(len(actBlob))) // Conformant max count
 	buf.Write(actBlob)
@@ -100,7 +103,7 @@ func buildActivationBlob(clsid, iid [16]byte) []byte {
 	binary.Write(buf, binary.LittleEndian, uint32(FLAGS_OBJREF_CUSTOM))
 	buf.Write(IID_IActivationPropertiesIn[:])
 	buf.Write(CLSID_ActivationPropertiesIn[:])
-	binary.Write(buf, binary.LittleEndian, uint32(0))                     // extension
+	binary.Write(buf, binary.LittleEndian, uint32(0))                      // extension
 	binary.Write(buf, binary.LittleEndian, uint32(len(actBlob.Bytes())+8)) // ObjectReferenceSize
 	buf.Write(actBlob.Bytes())
 
@@ -110,13 +113,13 @@ func buildActivationBlob(clsid, iid [16]byte) []byte {
 // writeTS1Header writes a TypeSerialization1 header (CommonHeader + PrivateHeader)
 func writeTS1Header(buf *bytes.Buffer, objectLen int) {
 	// CommonHeader (8 bytes)
-	buf.WriteByte(0x01)       // Version = 1
-	buf.WriteByte(0x10)       // Endianness = 0x10 (little-endian)
-	binary.Write(buf, binary.LittleEndian, uint16(8)) // CommonHeaderLength = 8
+	buf.WriteByte(0x01)                                        // Version = 1
+	buf.WriteByte(0x10)                                        // Endianness = 0x10 (little-endian)
+	binary.Write(buf, binary.LittleEndian, uint16(8))          // CommonHeaderLength = 8
 	binary.Write(buf, binary.LittleEndian, uint32(0xcccccccc)) // Filler
 
 	// PrivateHeader (8 bytes)
-	binary.Write(buf, binary.LittleEndian, uint32(objectLen)) // ObjectBufferLength
+	binary.Write(buf, binary.LittleEndian, uint32(objectLen))  // ObjectBufferLength
 	binary.Write(buf, binary.LittleEndian, uint32(0xcccccccc)) // Filler
 }
 
@@ -281,7 +284,7 @@ func buildScmRequestInfoTS1() []byte {
 	binary.Write(inner, binary.LittleEndian, uint32(0x0000b82a))
 
 	// Referent data for pRequestedProtseqs (conformant array)
-	binary.Write(inner, binary.LittleEndian, uint32(1)) // max count
+	binary.Write(inner, binary.LittleEndian, uint32(1))            // max count
 	binary.Write(inner, binary.LittleEndian, uint16(NCACN_IP_TCP)) // protocol = 7
 
 	buf := new(bytes.Buffer)

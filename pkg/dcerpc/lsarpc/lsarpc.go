@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package lsarpc
 
 import (
@@ -26,18 +29,18 @@ const MinorVersion = 0
 
 // Opnums
 const (
-	OpLsarClose                    = 0
-	OpLsarQueryInformationPolicy   = 7
-	OpLsarLookupNames              = 14
-	OpLsarLookupSids               = 15
-	OpLsarRetrievePrivateData      = 43
-	OpLsarOpenPolicy2              = 44
+	OpLsarClose                  = 0
+	OpLsarQueryInformationPolicy = 7
+	OpLsarLookupNames            = 14
+	OpLsarLookupSids             = 15
+	OpLsarRetrievePrivateData    = 43
+	OpLsarOpenPolicy2            = 44
 )
 
 // Access Masks
 const (
-	POLICY_LOOKUP_NAMES    = 0x00000800
-	POLICY_VIEW_LOCAL      = 0x00000001
+	POLICY_LOOKUP_NAMES     = 0x00000800
+	POLICY_VIEW_LOCAL       = 0x00000001
 	POLICY_GET_PRIVATE_INFO = 0x00000004
 )
 
@@ -541,11 +544,11 @@ func parseLookupSidsResponse(resp []byte, sids []string) ([]LookupResult, error)
 
 		// Read TranslatedName entries
 		type translatedName struct {
-			use       uint16
-			nameLen   uint16
-			nameMax   uint16
-			namePtr   uint32
-			domIndex  int32
+			use      uint16
+			nameLen  uint16
+			nameMax  uint16
+			namePtr  uint32
+			domIndex int32
 		}
 		var nameList []translatedName
 		for i := 0; i < int(nameEntries); i++ {
@@ -818,9 +821,9 @@ func (lsa *LsaClient) OpenPolicyForSecrets() error {
 type LookupNameResult struct {
 	Name   string
 	Domain string
-	SID    []byte  // raw binary SID
-	SIDStr string  // string form S-1-...
-	Use    uint16  // SID_NAME_USE
+	SID    []byte // raw binary SID
+	SIDStr string // string form S-1-...
+	Use    uint16 // SID_NAME_USE
 }
 
 // LookupNames resolves account names to SIDs via LsarLookupNames (OpNum 14).
@@ -842,9 +845,9 @@ func (lsa *LsaClient) LookupNames(names []string) ([]LookupNameResult, error) {
 	for i, name := range names {
 		utf16Name := utf16.Encode([]rune(name))
 		nameLen := uint16(len(utf16Name) * 2)
-		binary.Write(buf, binary.LittleEndian, nameLen)                            // Length
-		binary.Write(buf, binary.LittleEndian, nameLen)                            // MaximumLength
-		binary.Write(buf, binary.LittleEndian, uint32(0x00020000+i*4))             // Buffer pointer
+		binary.Write(buf, binary.LittleEndian, nameLen)                // Length
+		binary.Write(buf, binary.LittleEndian, nameLen)                // MaximumLength
+		binary.Write(buf, binary.LittleEndian, uint32(0x00020000+i*4)) // Buffer pointer
 	}
 
 	// Deferred string data for each name
@@ -1151,8 +1154,8 @@ func encodeSIDForNDR(s string) ([]byte, error) {
 	binary.Write(buf, binary.LittleEndian, uint32(len(subAuths)))
 
 	// RPC_SID structure
-	buf.WriteByte(byte(rev))             // Revision
-	buf.WriteByte(byte(len(subAuths)))   // SubAuthorityCount
+	buf.WriteByte(byte(rev))           // Revision
+	buf.WriteByte(byte(len(subAuths))) // SubAuthorityCount
 
 	// IdentifierAuthority (6 bytes, big-endian)
 	var authBytes [6]byte

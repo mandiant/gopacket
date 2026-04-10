@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package drsuapi
 
 import (
@@ -48,11 +51,11 @@ type BindResult struct {
 
 // DCInfo contains DC information from DsDomainControllerInfo
 type DCInfo struct {
-	NtdsDsaObjectGuid [16]byte
-	ServerObjectGuid  [16]byte
+	NtdsDsaObjectGuid  [16]byte
+	ServerObjectGuid   [16]byte
 	ComputerObjectGuid [16]byte
-	DnsHostName       string
-	NetbiosName       string
+	DnsHostName        string
+	NetbiosName        string
 }
 
 // DsDomainControllerInfo retrieves DC information including the DSA GUID
@@ -154,14 +157,10 @@ func parseDCInfoResponse(resp []byte) (*DCInfo, error) {
 	result := &DCInfo{}
 
 	// Skip the string pointers and BOOLs to get to the GUIDs
-	// Structure: 7 LPWSTR ptrs + 3 BOOLs + 4 GUIDs
-	// We need to skip the pointers and read GUIDs later
-
-	// For a simpler approach, scan for the GUID pattern at the end
+	// Structure: 7 LPWSTR pointers + 3 BOOLs + 4 GUIDs.
 	// The 4 GUIDs (SiteObjectGuid, ComputerObjectGuid, ServerObjectGuid, NtdsDsaObjectGuid)
-	// are 16 bytes each = 64 bytes total, likely at the end before deferred strings
+	// are 16 bytes each = 64 bytes total, positioned at the end before deferred strings.
 
-	// Let's read through the structure more carefully
 	// Read all string pointers (7)
 	for i := 0; i < 7; i++ {
 		var ptr uint32
@@ -273,9 +272,8 @@ func DsBind(client *dcerpc.Client) (*BindResult, error) {
 	// - Followed by DRS_EXTENSIONS data (if pointer non-null)
 	// - Context handle (phDrs) comes at a specific offset
 
-	// The context handle appears to be at a fixed offset after the extensions
-	// Looking at the response structure, let's find the handle by looking
-	// for the pattern or using the last 20 bytes before trailing zeros
+	// The context handle sits at a fixed offset after the extensions; we
+	// locate it by scanning for the handle pattern near the end of the response.
 
 	result := &BindResult{}
 

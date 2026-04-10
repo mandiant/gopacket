@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package session
 
 import (
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 // ParseTargetString parses a string in the format [domain/]user[:password]@target[:port]

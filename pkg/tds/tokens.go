@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package tds
 
 import (
@@ -59,11 +62,11 @@ func (t *LoginAckToken) TokenType() uint8 { return t.Type }
 
 // EnvChangeToken represents a TDS_ENVCHANGE_TOKEN
 type EnvChangeToken struct {
-	Type     uint8
-	Length   uint16
+	Type       uint8
+	Length     uint16
 	ChangeType uint8
-	NewValue string
-	OldValue string
+	NewValue   string
+	OldValue   string
 }
 
 func (t *EnvChangeToken) TokenType() uint8 { return t.Type }

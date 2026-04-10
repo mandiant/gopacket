@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package relay
 
 import (
@@ -276,8 +279,8 @@ func (c *RPCRelayClient) buildBind(ntlmToken []byte) []byte {
 	// Build presentation context item (44 bytes)
 	var ctxItem bytes.Buffer
 	binary.Write(&ctxItem, binary.LittleEndian, uint16(0)) // ContextID = 0
-	ctxItem.WriteByte(1)                                    // NumTransItems = 1
-	ctxItem.WriteByte(0)                                    // Reserved
+	ctxItem.WriteByte(1)                                   // NumTransItems = 1
+	ctxItem.WriteByte(0)                                   // Reserved
 	// Abstract syntax: UUID(16) + Version(2+2)
 	ctxItem.Write(c.endpointUUID[:])
 	binary.Write(&ctxItem, binary.LittleEndian, c.endpointMajor)
@@ -291,8 +294,8 @@ func (c *RPCRelayClient) buildBind(ntlmToken []byte) []byte {
 	binary.Write(&body, binary.LittleEndian, uint16(4280)) // MaxXmitFrag
 	binary.Write(&body, binary.LittleEndian, uint16(4280)) // MaxRecvFrag
 	binary.Write(&body, binary.LittleEndian, uint32(0))    // AssocGroup
-	body.WriteByte(1)                                       // NumCtxItems
-	body.Write([]byte{0, 0, 0})                             // Reserved (3 bytes)
+	body.WriteByte(1)                                      // NumCtxItems
+	body.Write([]byte{0, 0, 0})                            // Reserved (3 bytes)
 	body.Write(ctxItem.Bytes())
 
 	bodyBytes := body.Bytes()
@@ -306,9 +309,9 @@ func (c *RPCRelayClient) buildBind(ntlmToken []byte) []byte {
 	// Security trailer (8 bytes)
 	var secTrailer bytes.Buffer
 	secTrailer.WriteByte(rpcAuthWinNT)        // auth_type = 10 (NTLMSSP)
-	secTrailer.WriteByte(rpcAuthLevelConnect)  // auth_level = 2 (CONNECT)
-	secTrailer.WriteByte(byte(pad))            // auth_pad_len
-	secTrailer.WriteByte(0)                    // reserved
+	secTrailer.WriteByte(rpcAuthLevelConnect) // auth_level = 2 (CONNECT)
+	secTrailer.WriteByte(byte(pad))           // auth_pad_len
+	secTrailer.WriteByte(0)                   // reserved
 	binary.Write(&secTrailer, binary.LittleEndian, uint32(rpcAuthCtxIDRelay))
 
 	authLen := uint16(len(ntlmToken))
@@ -317,11 +320,11 @@ func (c *RPCRelayClient) buildBind(ntlmToken []byte) []byte {
 	// Build complete packet
 	var pkt bytes.Buffer
 	// Common header (16 bytes)
-	binary.Write(&pkt, binary.LittleEndian, uint8(5))            // MajorVersion
-	binary.Write(&pkt, binary.LittleEndian, uint8(0))            // MinorVersion
-	binary.Write(&pkt, binary.LittleEndian, uint8(rpcPktBind))   // PacketType
-	binary.Write(&pkt, binary.LittleEndian, uint8(0x03))         // Flags: PFC_FIRST_FRAG | PFC_LAST_FRAG
-	pkt.Write([]byte{0x10, 0x00, 0x00, 0x00})                    // DataRep: LE, ASCII, IEEE
+	binary.Write(&pkt, binary.LittleEndian, uint8(5))          // MajorVersion
+	binary.Write(&pkt, binary.LittleEndian, uint8(0))          // MinorVersion
+	binary.Write(&pkt, binary.LittleEndian, uint8(rpcPktBind)) // PacketType
+	binary.Write(&pkt, binary.LittleEndian, uint8(0x03))       // Flags: PFC_FIRST_FRAG | PFC_LAST_FRAG
+	pkt.Write([]byte{0x10, 0x00, 0x00, 0x00})                  // DataRep: LE, ASCII, IEEE
 	binary.Write(&pkt, binary.LittleEndian, fragLen)
 	binary.Write(&pkt, binary.LittleEndian, authLen)
 	binary.Write(&pkt, binary.LittleEndian, c.callID)

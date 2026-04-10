@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jacob Paullus
+
 package main
 
 import (
@@ -32,9 +35,9 @@ var (
 	justDCNTLM = flag.Bool("just-dc-ntlm", false, "Extract only NTDS.DIT data (NTLM hashes only)")
 
 	// Output flags (outputfile is provided by flags.Parse() via opts.OutputFile)
-	pwdLastSet   = flag.Bool("pwd-last-set", false, "Shows pwdLastSet attribute for each NTDS.DIT account. Doesn't apply to -outputfile data")
-	userStatus   = flag.Bool("user-status", false, "Display whether or not the user is disabled")
-	dumpHistory  = flag.Bool("history", false, "Dump password history, and LSA secrets OldVal")
+	pwdLastSet  = flag.Bool("pwd-last-set", false, "Shows pwdLastSet attribute for each NTDS.DIT account. Doesn't apply to -outputfile data")
+	userStatus  = flag.Bool("user-status", false, "Display whether or not the user is disabled")
+	dumpHistory = flag.Bool("history", false, "Dump password history, and LSA secrets OldVal")
 
 	// Skip flags
 	skipSAM      = flag.Bool("skip-sam", false, "Do NOT parse the SAM hive on remote system")
@@ -274,8 +277,8 @@ func dumpRemoteRegistry(target session.Target, creds session.Credentials) error 
 							if serviceDisabled {
 								fmt.Println("[*] Restoring the disabled state for service RemoteRegistry")
 								sc.ChangeServiceConfig(svcHandle, &svcctl.ChangeServiceConfigParams{
-								ServiceType: svcctl.SERVICE_NO_CHANGE, StartType: svcctl.SERVICE_DISABLED, ErrorControl: svcctl.SERVICE_NO_CHANGE,
-							})
+									ServiceType: svcctl.SERVICE_NO_CHANGE, StartType: svcctl.SERVICE_DISABLED, ErrorControl: svcctl.SERVICE_NO_CHANGE,
+								})
 							}
 
 							sc.CloseServiceHandle(svcHandle)
