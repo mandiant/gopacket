@@ -56,6 +56,7 @@ import (
 	"github.com/mandiant/gopacket/pkg/kerberos"
 	"github.com/mandiant/gopacket/pkg/session"
 	"github.com/mandiant/gopacket/pkg/smb"
+	"github.com/mandiant/gopacket/pkg/transport"
 )
 
 // IDispatch invoke flags
@@ -330,8 +331,13 @@ func (e *DCOMExec) connect() error {
 		host = e.creds.DCIP
 	}
 
+	// Route DCE/RPC TCP connects through gopacket's transport so -proxy /
+	// proxychains take effect. Without this, upstream falls back to net.Dialer
+	// which bypasses both the SOCKS5 dialer and the libc connect() hook.
+	dialer := dcerpc.WithDialer(&transport.Dialer{})
+
 	// Connect to endpoint mapper (port 135)
-	conn, err := dcerpc.Dial(e.ctx, net.JoinHostPort(host, "135"))
+	conn, err := dcerpc.Dial(e.ctx, net.JoinHostPort(host, "135"), dialer)
 	if err != nil {
 		return fmt.Errorf("failed to connect to endpoint mapper: %v", err)
 	}
@@ -400,7 +406,7 @@ func (e *DCOMExec) connect() error {
 	}
 
 	// Connect to the OXID endpoint
-	oxidConn, err := dcerpc.Dial(e.ctx, host, endpoints...)
+	oxidConn, err := dcerpc.Dial(e.ctx, host, append([]dcerpc.Option{dialer}, endpoints...)...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to OXID endpoint: %v", err)
 	}

@@ -59,6 +59,7 @@ import (
 	"github.com/mandiant/gopacket/pkg/kerberos"
 	"github.com/mandiant/gopacket/pkg/session"
 	"github.com/mandiant/gopacket/pkg/smb"
+	"github.com/mandiant/gopacket/pkg/transport"
 )
 
 var (
@@ -193,9 +194,14 @@ func main() {
 
 	ctx := gssapi.NewSecurityContext(context.Background())
 
+	// Route DCE/RPC TCP connects through gopacket's transport so -proxy /
+	// proxychains take effect. Without this, upstream falls back to net.Dialer
+	// which bypasses both the SOCKS5 dialer and the libc connect() hook.
+	dialer := dcerpc.WithDialer(&transport.Dialer{})
+
 	// 1. Connect to Endpoint Mapper (Port 135)
 	log.Info().Msgf("Connecting to %s:135", target.Host)
-	cc, err := dcerpc.Dial(ctx, net.JoinHostPort(target.Host, "135"))
+	cc, err := dcerpc.Dial(ctx, net.JoinHostPort(target.Host, "135"), dialer)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[-] Dial 135 failed: %v\n", err)
 		os.Exit(1)
@@ -249,7 +255,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	wcc, err := dcerpc.Dial(ctx, target.Host, endpoints...)
+	wcc, err := dcerpc.Dial(ctx, target.Host, append([]dcerpc.Option{dialer}, endpoints...)...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[-] Dial WMI failed: %v\n", err)
 		os.Exit(1)

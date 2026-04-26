@@ -71,7 +71,8 @@ func DialTLS(network, address string, config *tls.Config) (*tls.Conn, error) {
 }
 
 // Dialer is a value-typed dialer suitable for APIs that expect a struct with a
-// Dial method (e.g. pkg/smb, pkg/ldap). Respects the configured proxy.
+// Dial or DialContext method (e.g. pkg/smb, pkg/ldap, go-msrpc/dcerpc).
+// Respects the configured proxy.
 type Dialer struct {
 	TimeoutSec int
 }
@@ -79,6 +80,13 @@ type Dialer struct {
 // Dial establishes a TCP connection to address. Routes through the proxy if configured.
 func (d *Dialer) Dial(network, address string) (net.Conn, error) {
 	return DialTimeout(network, address, d.TimeoutSec)
+}
+
+// DialContext establishes a TCP connection, honoring ctx for cancellation and
+// deadline. Routes through the proxy if configured. Satisfies the
+// go-msrpc/dcerpc.Dialer interface.
+func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	return DialContext(ctx, network, address)
 }
 
 func splitHostPort(address string) (host, port string, err error) {
