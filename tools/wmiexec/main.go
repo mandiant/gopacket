@@ -516,15 +516,16 @@ func (e *WMIExec) retrieveOutput(filename string) (string, error) {
 		content, err := smbClient.Cat(filename)
 		if err == nil {
 			// Delete the output file
-			smbClient.Rm(filename)
+			if err := smbClient.Rm(filename); err != nil {
+				// If sharing violation, command is still running
+				if strings.Contains(err.Error(), "share access flags are incompatible") {
+					e.log.Debug().Msg("Output file in use, waiting...")
+					continue
+				}
+			}
 			return content, nil
 		}
 
-		// If sharing violation, command is still running
-		if strings.Contains(err.Error(), "STATUS_SHARING_VIOLATION") {
-			e.log.Debug().Msg("Output file in use, waiting...")
-			continue
-		}
 
 		// If file not found, keep waiting
 		if strings.Contains(err.Error(), "STATUS_OBJECT_NAME_NOT_FOUND") {
