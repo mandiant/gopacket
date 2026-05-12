@@ -977,18 +977,19 @@ func (e *DCOMExec) getOutput() string {
 
 		content, err := e.smbClient.Cat(outputPath)
 		if err == nil {
-			e.smbClient.Rm(outputPath)
+			// Cat succeeds even while the remote process is still writing;
+			// Rm is what fails with a sharing violation in that case.
+			if rmErr := e.smbClient.Rm(outputPath); rmErr != nil && smb.IsSharingViolation(rmErr) {
+				waited = 0
+				continue
+			}
 			return e.decodeOutput(content)
 		}
 
 		errStr := err.Error()
 
-		if strings.Contains(errStr, "STATUS_SHARING_VIOLATION") {
-			waited = 0
-			continue
-		}
-
-		// Connection broken — reconnect and retry (matches Impacket)
+		// Connection broken — reconnect and retry (matches Impacket).
+		// These come from net, not smb2, so substring matching is the right tool.
 		if strings.Contains(errStr, "broken") || strings.Contains(errStr, "connection reset") || strings.Contains(errStr, "use of closed") {
 			e.log.Debug().Msg("Connection broken, trying to recreate it")
 			e.smbClient.Close()
@@ -1000,10 +1001,8 @@ func (e *DCOMExec) getOutput() string {
 			return e.getOutput()
 		}
 
-		// File not found yet — keep waiting up to timeout
-		if strings.Contains(errStr, "STATUS_OBJECT_NAME_NOT_FOUND") ||
-			strings.Contains(errStr, "does not exist") ||
-			strings.Contains(errStr, "not found") {
+		// File not found yet — keep waiting up to timeout.
+		if smb.IsNotFound(err) {
 			if waited >= maxWait {
 				return ""
 			}

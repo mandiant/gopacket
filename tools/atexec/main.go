@@ -322,18 +322,16 @@ func (e *AtExec) getOutput(tmpFileName string) string {
 
 		content, err := e.smbClient.Cat(outputPath)
 		if err == nil {
-			// Delete the output file
-			e.smbClient.Rm(outputPath)
+			// Cat succeeds even while the remote process is still writing;
+			// Rm is what fails with a sharing violation in that case.
+			if rmErr := e.smbClient.Rm(outputPath); rmErr != nil && smb.IsSharingViolation(rmErr) {
+				continue
+			}
 			return content
 		}
 
-		// If sharing violation, command is still running
-		if strings.Contains(err.Error(), "STATUS_SHARING_VIOLATION") {
-			continue
-		}
-
-		// If file not found, keep waiting
-		if strings.Contains(err.Error(), "STATUS_OBJECT_NAME_NOT_FOUND") {
+		// File not yet created — keep waiting.
+		if smb.IsNotFound(err) {
 			continue
 		}
 	}

@@ -379,20 +379,18 @@ func (e *SMBExec) getOutputShare() (string, error) {
 
 		c, err := e.smbClient.Cat(outputFilename)
 		if err == nil {
+			// Cat succeeds even while the remote process is still writing;
+			// Rm is what fails with a sharing violation in that case.
+			if rmErr := e.smbClient.Rm(outputFilename); rmErr != nil && smb.IsSharingViolation(rmErr) {
+				e.log.Debug().Msg("Output file in use, waiting...")
+				continue
+			}
 			content = c
-			// Delete the output file
-			e.smbClient.Rm(outputFilename)
 			break
 		}
 
-		// If sharing violation, command is still running
-		if strings.Contains(err.Error(), "STATUS_SHARING_VIOLATION") {
-			e.log.Debug().Msg("Output file in use, waiting...")
-			continue
-		}
-
-		// If file not found, keep waiting a bit
-		if strings.Contains(err.Error(), "STATUS_OBJECT_NAME_NOT_FOUND") {
+		// File not yet created — keep waiting a bit.
+		if smb.IsNotFound(err) {
 			continue
 		}
 
