@@ -37,6 +37,12 @@ import (
 	"github.com/mandiant/gopacket/pkg/utf16le"
 )
 
+// maxReasonable bounds the per-array element count any V6 parser helper is
+// willing to honour from the wire, so a malformed or hostile reply can't push
+// us into a giant allocation or a count*size product that overflows int on
+// 32-bit builds. Generous enough for any real DC.
+const maxReasonable = 10 * 1024 * 1024
+
 // parseGetNCChangesResponseV6NDR parses the V6/V7/V9 GetNCChanges reply.
 // V6 is the canonical shape; V7 and V9 add fields after the V6 body which
 // this parser does not consume (same limitation as Impacket's secretsdump).
@@ -71,8 +77,9 @@ func parseGetNCChangesResponseV6NDR(resp []byte, sessionKey []byte) (*GetNCChang
 	ptrUpToDate := d.ReadPointer()
 
 	// PrefixTableSrc is a SCHEMA_PREFIX_TABLE inline: cNumPrefixes +
-	// pPrefixEntry referent.
-	prefixCount := d.ReadUint32()
+	// pPrefixEntry referent. cNumPrefixes is read to advance the cursor but
+	// discarded; the deferred array's own wire MaxCount is authoritative.
+	_ = d.ReadUint32() // cNumPrefixes
 	ptrPrefixEntry := d.ReadPointer()
 
 	// The rest of the fixed V6 header.
@@ -103,8 +110,11 @@ func parseGetNCChangesResponseV6NDR(resp []byte, sessionKey []byte) (*GetNCChang
 	}
 
 	prefixTable := make(map[uint32][]byte)
-	if ptrPrefixEntry != 0 && prefixCount > 0 {
-		readPrefixTableV2(d, prefixCount, prefixTable)
+	if ptrPrefixEntry != 0 {
+		// NDR: a non-null pointer always implies deferred data on the wire,
+		// even when the array is empty (MaxCount==0). Gate on the pointer
+		// alone, never on a sibling count field.
+		readPrefixTableV2(d, prefixTable)
 	}
 
 	if ptrObjects != 0 {
@@ -125,6 +135,10 @@ func skipDSNAMEv2(d *Decoder) {
 	d.Skip(16)         // Guid
 	d.Skip(28)         // Sid
 	_ = d.ReadUint32() // NameLen
+	if maxCount > maxReasonable {
+		d.Fail("ndr: DSNAME StringName count %d exceeds cap %d", maxCount, maxReasonable)
+		return
+	}
 	d.Skip(int(maxCount) * 2)
 	d.Align(4)
 }
@@ -139,11 +153,19 @@ func readDSNAMEv2(d *Decoder, obj *ReplicatedObject) {
 	sid := d.ReadBytes(28)
 	if sidLen > 0 && sidLen <= 28 && sid != nil {
 		obj.ObjectSid = append([]byte(nil), sid[:sidLen]...)
-		if sidLen >= 8 {
+		// SID layout: rev(1) + subAuthCount(1) + idAuth(6) + subAuth[N](4 each).
+		// A RID is the last SubAuthority, so we need at least one SubAuthority
+		// present — minimum 12 bytes. At sidLen==8 (no SubAuthorities) the
+		// "last 4 bytes" would be the tail of IdentifierAuthority, not a RID.
+		if sidLen >= 12 {
 			obj.RID = binary.LittleEndian.Uint32(sid[sidLen-4:])
 		}
 	}
 	nameLen := d.ReadUint32()
+	if maxCount > maxReasonable {
+		d.Fail("ndr: DSNAME StringName count %d exceeds cap %d", maxCount, maxReasonable)
+		return
+	}
 	if maxCount > 0 {
 		name := d.ReadBytes(int(maxCount) * 2)
 		if name != nil {
@@ -163,26 +185,49 @@ func readDSNAMEv2(d *Decoder, obj *ReplicatedObject) {
 // skipUpToDateVectorV2 consumes the deferred UPTODATE_VECTOR_V{1,2}_EXT.
 // Both V1 and V2 share the same header (dwVersion, dwReserved1, cNumCursors,
 // dwReserved2); cursors are UUID + USN (24 bytes) in V1, UUID + USN + DSTIME
-// (32 bytes) in V2. NDR early conformance puts MaxCount at the front.
+// (32 bytes) in V2. The cursors contain LONGLONG (USN, DSTIME), so the
+// struct's alignment is 8. NDR early conformance hoists rgCursors' MaxCount
+// to the front using its primitive (4-byte) alignment; the struct's 8-byte
+// alignment then applies AFTER MaxCount, before dwVersion. Missing this pad
+// drifts every reply whose MaxCount lands at a 4-aligned (non-8-aligned)
+// offset, which happens when there is at least one cursor.
+//
+// The hoisted MaxCount is the wire authority for cursor count; the in-struct
+// cNumCursors is read and discarded. They agree in any well-formed reply, but
+// using MaxCount is what NDR demands and prevents drift on a malformed one.
 func skipUpToDateVectorV2(d *Decoder) {
-	_ = d.ReadConformance() // MaxCount
+	maxCount := d.ReadConformance() // wire-authority cursor count, primitive 4-aligned
+	d.Align(8)                      // struct alignment before fixed fields
 	version := d.ReadUint32()
 	_ = d.ReadUint32() // dwReserved1
-	cNumCursors := d.ReadUint32()
+	_ = d.ReadUint32() // cNumCursors (struct field; MaxCount above is authoritative)
 	_ = d.ReadUint32() // dwReserved2
 
 	cursorSize := 24
 	if version == 2 {
 		cursorSize = 32
 	}
-	d.Skip(int(cNumCursors) * cursorSize)
+	if maxCount > maxReasonable {
+		d.Fail("ndr: UPTODATE_VECTOR cursor count %d exceeds cap %d", maxCount, maxReasonable)
+		return
+	}
+	d.Skip(int(maxCount) * cursorSize)
 }
 
 // readPrefixTableV2 consumes the PrefixTableEntry_ARRAY deferred data
 // (conformant array of {ndx: DWORD, prefix: OID_t}) and populates the
 // prefixTable map with ndx -> OID bytes for decoding attribute type IDs.
-func readPrefixTableV2(d *Decoder, count uint32, prefixTable map[uint32][]byte) {
-	_ = d.ReadConformance() // MaxCount of the PrefixTableEntry array
+//
+// The hoisted MaxCount, not the enclosing SCHEMA_PREFIX_TABLE.PrefixCount
+// struct field, governs how many fixed-part entries are serialized on the
+// wire. They agree in any well-formed reply; on a malformed one, trusting
+// the wire conformance keeps the cursor aligned for downstream deferreds.
+func readPrefixTableV2(d *Decoder, prefixTable map[uint32][]byte) {
+	count := d.ReadConformance() // wire authority for entry count
+	if count > maxReasonable {
+		d.Fail("ndr: PrefixTableEntry count %d exceeds cap %d", count, maxReasonable)
+		return
+	}
 
 	type entry struct {
 		ndx       uint32
@@ -197,12 +242,19 @@ func readPrefixTableV2(d *Decoder, count uint32, prefixTable map[uint32][]byte) 
 	}
 
 	for i := range entries {
-		if entries[i].oidPtrRef == 0 || entries[i].oidLen == 0 {
+		// NDR: pointer alone gates deferred data. An empty OID (oidLen==0)
+		// with a non-null pointer still serializes MaxCount==0 on the wire,
+		// which we must consume to stay aligned.
+		if entries[i].oidPtrRef == 0 {
 			continue
 		}
 		oidMaxCount := d.ReadConformance()
+		if oidMaxCount > maxReasonable {
+			d.Fail("ndr: PrefixTableEntry.pOid count %d exceeds cap %d", oidMaxCount, maxReasonable)
+			return
+		}
 		oidBytes := d.ReadBytes(int(oidMaxCount))
-		if oidBytes != nil {
+		if oidBytes != nil && len(oidBytes) > 0 {
 			prefixTable[entries[i].ndx] = append([]byte(nil), oidBytes...)
 		}
 		d.Align(4)
@@ -242,6 +294,10 @@ func skipPropertyMetaDataExtVectorV2(d *Decoder) {
 	_ = d.ReadUint32()         // cNumProps
 	d.Align(8)                 // element alignment
 	const metaDataExtSize = 40
+	if maxCount > maxReasonable {
+		d.Fail("ndr: PROPERTY_META_DATA_EXT count %d exceeds cap %d", maxCount, maxReasonable)
+		return
+	}
 	d.Skip(int(maxCount) * metaDataExtSize)
 }
 
@@ -266,27 +322,43 @@ func readREPLENTINFLISTArrayV2(d *Decoder, sessionKey []byte, prefixTable map[ui
 		ptrMetaData   uint32
 	}
 
-	headers := make([]header, numObjects)
-	for i := uint32(0); i < numObjects; i++ {
-		headers[i].ptrNext = d.ReadPointer()
-		headers[i].ptrName = d.ReadPointer()
-		headers[i].flags = d.ReadUint32()
-		headers[i].attrCount = d.ReadUint32()
-		headers[i].ptrAttr = d.ReadPointer()
-		headers[i].isNCPrefix = d.ReadUint32()
-		headers[i].ptrParentGuid = d.ReadPointer()
-		headers[i].ptrMetaData = d.ReadPointer()
+	if numObjects > maxReasonable {
+		d.Fail("ndr: REPLENTINFLIST cNumObjects %d exceeds cap %d", numObjects, maxReasonable)
+		return nil
 	}
 
-	objects := make([]ReplicatedObject, 0, numObjects)
-	for i := int(numObjects) - 1; i >= 0; i-- {
+	// numObjects is the V6 header's cNumObjects; the structural truth is the
+	// pNextEntInf chain, terminated by ptrNext==0. They agree in any well-
+	// formed reply, but a count overrun would have us read deferred data as
+	// header fields, so break the loop on the wire terminator.
+	headers := make([]header, 0, numObjects)
+	for i := uint32(0); i < numObjects; i++ {
+		h := header{}
+		h.ptrNext = d.ReadPointer()
+		h.ptrName = d.ReadPointer()
+		h.flags = d.ReadUint32()
+		h.attrCount = d.ReadUint32()
+		h.ptrAttr = d.ReadPointer()
+		h.isNCPrefix = d.ReadUint32()
+		h.ptrParentGuid = d.ReadPointer()
+		h.ptrMetaData = d.ReadPointer()
+		headers = append(headers, h)
+		if h.ptrNext == 0 {
+			break
+		}
+	}
+
+	objects := make([]ReplicatedObject, 0, len(headers))
+	for i := len(headers) - 1; i >= 0; i-- {
 		h := headers[i]
 		obj := ReplicatedObject{}
 
 		if h.ptrName != 0 {
 			readDSNAMEv2(d, &obj)
 		}
-		if h.ptrAttr != 0 && h.attrCount > 0 {
+		if h.ptrAttr != 0 {
+			// NDR: deferred data presence is gated by the pointer alone;
+			// h.attrCount can be 0 with a non-null pointer (empty array).
 			readATTRBLOCKv2(d, &obj, sessionKey, prefixTable)
 		}
 		if h.ptrParentGuid != 0 {
@@ -296,12 +368,8 @@ func readREPLENTINFLISTArrayV2(d *Decoder, sessionKey []byte, prefixTable map[ui
 			skipPropertyMetaDataExtVectorV2(d)
 		}
 
-		if obj.SAMAccountName == "" && strings.HasPrefix(obj.DN, "CN=") {
-			rdn := obj.DN[3:]
-			if comma := strings.IndexByte(rdn, ','); comma >= 0 {
-				rdn = rdn[:comma]
-			}
-			obj.SAMAccountName = rdn
+		if obj.SAMAccountName == "" && len(obj.DN) >= 3 && strings.EqualFold(obj.DN[:3], "CN=") {
+			obj.SAMAccountName = firstRDNValue(obj.DN[3:])
 		}
 
 		if obj.SAMAccountName != "" || len(obj.NTHash) > 0 {
@@ -322,9 +390,9 @@ func readREPLENTINFLISTArrayV2(d *Decoder, sessionKey []byte, prefixTable map[ui
 func readATTRBLOCKv2(d *Decoder, obj *ReplicatedObject, sessionKey []byte, prefixTable map[uint32][]byte) {
 	_ = prefixTable
 
-	const maxReasonable = 10 * 1024 * 1024
 	arrayMax := d.ReadConformance()
 	if arrayMax > maxReasonable {
+		d.Fail("ndr: ATTR_ARRAY count %d exceeds cap %d", arrayMax, maxReasonable)
 		return
 	}
 
@@ -345,6 +413,7 @@ func readATTRBLOCKv2(d *Decoder, obj *ReplicatedObject, sessionKey []byte, prefi
 		}
 		valMax := d.ReadConformance()
 		if valMax > maxReasonable {
+			d.Fail("ndr: ATTRVAL_ARRAY count %d exceeds cap %d", valMax, maxReasonable)
 			return
 		}
 		vals := make([]uint32, valMax)
@@ -358,6 +427,7 @@ func readATTRBLOCKv2(d *Decoder, obj *ReplicatedObject, sessionKey []byte, prefi
 			}
 			byteMax := d.ReadConformance()
 			if byteMax > maxReasonable {
+				d.Fail("ndr: ATTRVAL byte count %d exceeds cap %d", byteMax, maxReasonable)
 				return
 			}
 			valData := d.ReadBytes(int(byteMax))
@@ -367,4 +437,21 @@ func readATTRBLOCKv2(d *Decoder, obj *ReplicatedObject, sessionKey []byte, prefi
 			d.Align(4)
 		}
 	}
+}
+
+// firstRDNValue returns the value portion of the first RDN in dn (e.g.
+// "Smith, John" from "Smith\, John,OU=Foo"), honoring RFC 4514's
+// backslash-escape rule so embedded commas don't truncate the result. The
+// caller has already stripped the "CN=" prefix.
+func firstRDNValue(dn string) string {
+	for i := 0; i < len(dn); i++ {
+		if dn[i] == '\\' {
+			i++ // skip the escaped char (i++ in the loop header advances past it)
+			continue
+		}
+		if dn[i] == ',' {
+			return dn[:i]
+		}
+	}
+	return dn
 }

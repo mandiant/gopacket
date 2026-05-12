@@ -73,9 +73,25 @@ func (d *Decoder) Err() error { return d.err }
 // Remaining is the number of bytes left to read.
 func (d *Decoder) Remaining() int { return len(d.data) - d.pos }
 
+// Fail records a sticky error on the decoder. Subsequent reads become
+// no-ops returning zero values, so a caller that aborts a helper for
+// structural reasons (e.g. exceeded a bounds cap) MUST call Fail before
+// returning so downstream helpers don't read from an unadvanced cursor and
+// drift the rest of the stream.
+func (d *Decoder) Fail(format string, args ...interface{}) {
+	if d.err == nil {
+		d.err = fmt.Errorf(format, args...)
+	}
+}
+
 // SeekTo moves the cursor to an absolute offset. Fails softly if out of
 // range: the error is recorded and subsequent reads return zero values.
+// If a prior error is already set, leaves both error and position alone so
+// the first-failure context survives downstream Skip/Align calls.
 func (d *Decoder) SeekTo(pos int) {
+	if d.err != nil {
+		return
+	}
 	if pos < 0 || pos > len(d.data) {
 		d.err = fmt.Errorf("ndr: seek to out-of-range offset %d (len=%d)", pos, len(d.data))
 		return
