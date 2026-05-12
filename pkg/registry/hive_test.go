@@ -86,3 +86,78 @@ func TestReadCellReturnsDataForValidCell(t *testing.T) {
 		t.Fatalf("readCell returned %q, want %q", string(data), "hello, world")
 	}
 }
+
+// TestGetValueDataResidentLengthRejected covers the input that originally
+// panicked in GetValueData: a VK with the resident flag set and a lower-31
+// length greater than the 4-byte DataOffset field. Found by kajaaz via Zorya
+// (issue #25). The guard must return an error, not crash.
+func TestGetValueDataResidentLengthRejected(t *testing.T) {
+	// h.data is unused on the resident path; the guard short-circuits before
+	// any cell read happens.
+	h := &Hive{}
+
+	for _, dataLen := range []uint32{5, 8, 0xFF, 0x7FFFFFFF} {
+		t.Run("dataLen="+strings.ToUpper(uintHex(dataLen)), func(t *testing.T) {
+			vk := &VKRecord{
+				DataLen:    dataLen | 0x80000000, // set resident flag
+				DataOffset: 0xDEADBEEF,
+			}
+
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("GetValueData panicked: %v", r)
+				}
+			}()
+			data, err := h.GetValueData(vk)
+			if err == nil {
+				t.Fatalf("GetValueData returned nil error; got data=%v", data)
+			}
+			if !strings.Contains(err.Error(), "exceeds maximum of 4 bytes") {
+				t.Fatalf("GetValueData error %q did not contain expected substring", err.Error())
+			}
+		})
+	}
+}
+
+// TestGetValueDataResidentLengthAllowed confirms the happy path still works:
+// a resident value of 1..4 bytes returns the inline DataOffset bytes.
+func TestGetValueDataResidentLengthAllowed(t *testing.T) {
+	h := &Hive{}
+	// DataOffset 0x44434241 = bytes 'A','B','C','D' little-endian.
+	for dataLen, want := range map[uint32]string{
+		1: "A",
+		2: "AB",
+		3: "ABC",
+		4: "ABCD",
+	} {
+		t.Run("dataLen="+uintHex(dataLen), func(t *testing.T) {
+			vk := &VKRecord{
+				DataLen:    dataLen | 0x80000000,
+				DataOffset: 0x44434241,
+			}
+			data, err := h.GetValueData(vk)
+			if err != nil {
+				t.Fatalf("GetValueData error: %v", err)
+			}
+			if string(data) != want {
+				t.Fatalf("GetValueData returned %q, want %q", string(data), want)
+			}
+		})
+	}
+}
+
+// uintHex is a tiny helper for table-driven test names.
+func uintHex(v uint32) string {
+	const hex = "0123456789abcdef"
+	if v == 0 {
+		return "0"
+	}
+	var buf [10]byte
+	i := len(buf)
+	for v > 0 {
+		i--
+		buf[i] = hex[v&0xF]
+		v >>= 4
+	}
+	return string(buf[i:])
+}
