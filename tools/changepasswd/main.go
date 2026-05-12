@@ -29,19 +29,20 @@ import (
 	"github.com/mandiant/gopacket/pkg/dcerpc/epmapper"
 	"github.com/mandiant/gopacket/pkg/dcerpc/samr"
 	"github.com/mandiant/gopacket/pkg/flags"
+	"github.com/mandiant/gopacket/pkg/kerberos"
 	"github.com/mandiant/gopacket/pkg/ldap"
 	"github.com/mandiant/gopacket/pkg/session"
 	"github.com/mandiant/gopacket/pkg/smb"
 	"github.com/mandiant/gopacket/pkg/transport"
 
 	goldap "github.com/go-ldap/ldap/v3"
-	krbclient "github.com/jcmturner/gokrb5/v8/client"
-	krbconfig "github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/crypto"
-	"github.com/jcmturner/gokrb5/v8/iana/nametype"
-	"github.com/jcmturner/gokrb5/v8/kadmin"
-	"github.com/jcmturner/gokrb5/v8/messages"
-	"github.com/jcmturner/gokrb5/v8/types"
+	krbclient "github.com/mandiant/gopacket/pkg/third_party/gokrb5/client"
+	krbconfig "github.com/mandiant/gopacket/pkg/third_party/gokrb5/config"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/crypto"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/nametype"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/kadmin"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/messages"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/types"
 )
 
 var (
@@ -52,6 +53,7 @@ var (
 	altUserVal   string
 	altPassVal   string
 	altHashVal   string
+	kpasswdIPVal string
 )
 
 func init() {
@@ -68,6 +70,8 @@ func init() {
 	flag.StringVar(&altPassVal, "altpass", "", "Alternative password for authentication")
 	flag.StringVar(&altHashVal, "althash", "", "Alternative NT hash for authentication")
 	flag.StringVar(&altHashVal, "althashes", "", "Alternative NT hash (alias for -althash)")
+
+	flag.StringVar(&kpasswdIPVal, "kpasswd-ip", "", "kpasswd server host (defaults to -dc-ip; use this when the kpasswd server is a different host from the KDC, e.g. PDC emulator vs RODC)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `changepasswd - Change or reset passwords over different protocols
@@ -456,19 +460,19 @@ func doKpasswd(opts *flags.Options, target session.Target, targetUsername, targe
 		kdc = target.Host
 	}
 
-	// Build krb5 config with kpasswd_server
-	cfgStr := fmt.Sprintf(`[libdefaults]
-  default_realm = %s
-  dns_lookup_realm = false
-  dns_lookup_kdc = false
-[realms]
-  %s = {
-    kdc = %s:88
-    kpasswd_server = %s:464
-  }
-`, realm, realm, kdc, kdc)
+	// Allow the kpasswd server to be split from the KDC. In AD, password
+	// changes are processed only by writable DCs (often the PDC emulator),
+	// so a -dc-ip pointed at an RODC needs an explicit -kpasswd-ip override
+	// pointed at a writable DC. Default to the KDC when unset.
+	kpasswdHost := kpasswdIPVal
+	if kpasswdHost == "" {
+		kpasswdHost = kdc
+	}
 
-	cfg, err := krbconfig.NewFromString(cfgStr)
+	// Build krb5 config via the shared helper so the opsec defaults
+	// (udp_preference_limit=1, dns_lookup_kdc=false, dns_lookup_realm=false)
+	// stay synchronized with the rest of the tool.
+	cfg, err := krbconfig.NewFromString(kerberos.SynthesizeKrb5ConfigWithKpasswd(realm, kdc, kpasswdHost))
 	if err != nil {
 		log.Fatalf("[-] Failed to create krb5 config: %v", err)
 	}
@@ -482,7 +486,7 @@ func doKpasswd(opts *flags.Options, target session.Target, targetUsername, targe
 		// Create Kerberos client with admin credentials
 		var krbClient *krbclient.Client
 		if authPassword != "" {
-			krbClient = krbclient.NewWithPassword(authUsername, realm, authPassword, cfg,
+			krbClient = krbclient.NewWithPassword(kerberos.TransportKDCDialer{}, authUsername, realm, authPassword, cfg,
 				krbclient.DisablePAFXFAST(true))
 		} else if authHashNT != "" {
 			// Use RC4-HMAC with NT hash as keytab
@@ -566,9 +570,10 @@ func doKpasswd(opts *flags.Options, target session.Target, targetUsername, targe
 			log.Fatalf("[-] Failed to marshal kpasswd request: %v", err)
 		}
 
-		// Send to kpasswd service (TCP port 464)
-		fmt.Printf("[*] Sending kpasswd set-password request to %s:464...\n", kdc)
-		respBytes, err := sendKpasswd(kdc, reqBytes)
+		// Send to kpasswd service (TCP port 464). Use kpasswdHost not kdc so
+		// the -kpasswd-ip override actually targets the writable DC.
+		fmt.Printf("[*] Sending kpasswd set-password request to %s...\n", kerberos.FormatKDC(kpasswdHost, "464"))
+		respBytes, err := sendKpasswd(kpasswdHost, reqBytes)
 		if err != nil {
 			log.Fatalf("[-] Failed to send kpasswd request: %v", err)
 		}
@@ -593,7 +598,7 @@ func doKpasswd(opts *flags.Options, target session.Target, targetUsername, targe
 		// Build Kerberos client with the target user's credentials
 		var krbClient *krbclient.Client
 		if authPassword != "" {
-			krbClient = krbclient.NewWithPassword(authUsername, realm, authPassword, cfg,
+			krbClient = krbclient.NewWithPassword(kerberos.TransportKDCDialer{}, authUsername, realm, authPassword, cfg,
 				krbclient.DisablePAFXFAST(true))
 		} else if authHashNT != "" {
 			log.Fatal("[-] kpasswd with NT hash requires password. Use password authentication.")
@@ -601,7 +606,7 @@ func doKpasswd(opts *flags.Options, target session.Target, targetUsername, targe
 			log.Fatal("[-] No credentials provided for kpasswd authentication")
 		}
 
-		fmt.Printf("[*] Sending kpasswd change-password request to %s:464...\n", kdc)
+		fmt.Printf("[*] Sending kpasswd change-password request to %s...\n", kerberos.FormatKDC(kpasswdHost, "464"))
 		ok, err := krbClient.ChangePasswd(newPassword)
 		if err != nil {
 			log.Fatalf("[-] kpasswd failed: %v", err)
@@ -615,7 +620,7 @@ func doKpasswd(opts *flags.Options, target session.Target, targetUsername, targe
 
 // sendKpasswd sends a kpasswd request to the KDC on TCP port 464 and returns the response.
 func sendKpasswd(kdc string, data []byte) ([]byte, error) {
-	addr := fmt.Sprintf("%s:464", kdc)
+	addr := kerberos.FormatKDC(kdc, "464")
 	conn, err := transport.DialTimeout("tcp", addr, 10)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to kpasswd %s: %v", addr, err)

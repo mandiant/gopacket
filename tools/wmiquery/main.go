@@ -56,6 +56,7 @@ import (
 	"github.com/mandiant/gopacket/pkg/flags"
 	"github.com/mandiant/gopacket/pkg/kerberos"
 	"github.com/mandiant/gopacket/pkg/session"
+	"github.com/mandiant/gopacket/pkg/transport"
 )
 
 // WBEM flags
@@ -158,19 +159,12 @@ func main() {
 		gssapi.AddCredential(ccCred)
 
 		realm := strings.ToUpper(creds.Domain)
-		kdc := target.Host
-		confStr := fmt.Sprintf(`[libdefaults]
-    default_realm = %s
-    dns_lookup_realm = false
-    dns_lookup_kdc = false
-
-[realms]
-    %s = {
-        kdc = %s
-    }
-`, realm, realm, kdc)
-
-		krb5Conf, err := gokrb5config.NewFromString(confStr)
+		kdc := creds.DCIP
+		if kdc == "" {
+			kdc = target.Host
+		}
+		// Synthesizer stamps udp_preference_limit=1 + dns_lookup_*=false.
+		krb5Conf, err := gokrb5config.NewFromString(kerberos.SynthesizeKrb5Config(realm, kdc))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[-] Failed to create Kerberos config: %v\n", err)
 			os.Exit(1)
@@ -179,6 +173,8 @@ func main() {
 		krbConfig := krb5.NewConfig()
 		krbConfig.KRB5Config = krb5.ParsedLibDefaults(krb5Conf)
 		krbConfig.DCEStyle = true
+		// See wmiexec for rationale: tunnel KDC traffic via pkg/transport.
+		krbConfig.KDCDialer = kerberos.TransportKDCDialer{}
 
 		gssapi.AddMechanism(ssp.SPNEGO)
 		gssapi.AddMechanism(ssp.KRB5)
@@ -201,12 +197,16 @@ func main() {
 	}
 
 	securityOpts = append(securityOpts, dcerpc.WithLogger(log))
+	// Route every dcerpc dial (and its DNS resolution) through pkg/transport
+	// so -proxy / ALL_PROXY tunnels DCERPC traffic. socks5h hostname pass-
+	// through keeps target resolution off the operator's local resolver.
+	securityOpts = append(securityOpts, dcerpc.WithDialer(transport.ContextDialer{}))
 
 	ctx := gssapi.NewSecurityContext(context.Background())
 
 	// 1. Connect to Endpoint Mapper (Port 135)
 	log.Info().Msgf("Connecting to %s:135", target.Host)
-	cc, err := dcerpc.Dial(ctx, net.JoinHostPort(target.Host, "135"))
+	cc, err := dcerpc.Dial(ctx, net.JoinHostPort(target.Host, "135"), dcerpc.WithDialer(transport.ContextDialer{}))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[-] Dial 135 failed: %v\n", err)
 		os.Exit(1)
@@ -265,7 +265,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	wcc, err := dcerpc.Dial(ctx, target.Host, endpoints...)
+	// See wmiexec for rationale on the ncacn_ip_tcp prefix (bypasses go-msrpc's
+	// pre-dial LookupIP so socks5h handles resolution).
+	wcc, err := dcerpc.Dial(ctx, "ncacn_ip_tcp:"+target.Host, append(endpoints, dcerpc.WithDialer(transport.ContextDialer{}))...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[-] Dial WMI failed: %v\n", err)
 		os.Exit(1)

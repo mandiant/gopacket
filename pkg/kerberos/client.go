@@ -21,19 +21,118 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 
-	"github.com/jcmturner/gokrb5/v8/client"
-	"github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/credentials"
-	"github.com/jcmturner/gokrb5/v8/gssapi"
-	"github.com/jcmturner/gokrb5/v8/keytab"
-	"github.com/jcmturner/gokrb5/v8/messages"
-	"github.com/jcmturner/gokrb5/v8/types"
 	"github.com/mandiant/gopacket/internal/build"
 	"github.com/mandiant/gopacket/pkg/session"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/client"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/config"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/credentials"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/gssapi"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/keytab"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/messages"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/types"
+	"github.com/mandiant/gopacket/pkg/transport"
 )
+
+// TransportKDCDialer routes every KDC connection (AS, TGS, kpasswd) through
+// pkg/transport, so a configured -proxy / ALL_PROXY tunnels Kerberos traffic
+// in lockstep with the rest of the tool. Without this, gokrb5's default path
+// uses raw net.Dial and leaks the operator's real source IP to the KDC.
+//
+// Every gokrb5 client constructor in our fork (NewWithPassword, NewWithKeytab,
+// NewFromCCache) requires a KDCDialer; passing this type is how the rest of
+// the codebase satisfies that contract while keeping the proxy guarantee.
+type TransportKDCDialer struct{}
+
+func (TransportKDCDialer) Dial(network, address string) (net.Conn, error) {
+	return transport.DialTimeout(network, address, 10)
+}
+
+// The opsec invariants every gokrb5 config in this project must enforce:
+//
+//   - dns_lookup_realm / dns_lookup_kdc = false → no SRV lookups via the OS
+//     resolver, which would bypass our KDCDialer.
+//   - udp_preference_limit = 1 → TCP-only KDC. Modern KRB5 already requires
+//     TCP for PAC-bearing TGS responses >1500 bytes; forcing it uniformly
+//     deletes a code path and keeps direct vs proxied behavior identical.
+//
+// /etc/krb5.conf and $KRB5_CONFIG are intentionally never consulted; the
+// in-memory cfg is the only source. ApplyKrb5OpsecDefaults is the choke point
+// for programmatic callers; SynthesizeKrb5Config is the choke point for
+// string-template callers. Anything else risks drift.
+
+// ApplyKrb5OpsecDefaults stamps the proxy-/DNS-safety invariants onto a
+// programmatically-built *config.Config. Call it after config.New() and
+// before constructing a gokrb5 client. Safe to call repeatedly.
+func ApplyKrb5OpsecDefaults(cfg *config.Config) {
+	cfg.LibDefaults.UDPPreferenceLimit = 1
+	cfg.LibDefaults.DNSLookupKDC = false
+	cfg.LibDefaults.DNSLookupRealm = false
+}
+
+// FormatKDC normalizes a "host" or "host:port" string into a canonical
+// "host:port" using net.JoinHostPort, which correctly brackets IPv6 literals.
+// Required so that callers passing "[::1]:88", bare "::1", "10.0.0.1:8888",
+// or "dc.example.com" all produce valid krb5.conf entries — the naïve
+// fmt.Sprintf("%s:88", kdc) form mangles every IPv6 case.
+//
+// A user-supplied port is preserved: "10.0.0.1:8888" stays on 8888. The
+// defaultPort applies only when input has no port (bare host) or a malformed
+// trailing-colon form ("host:"). This matches operator expectation for
+// lab/tunnel routing where the KDC may not be on the canonical 88/464.
+func FormatKDC(kdc, defaultPort string) string {
+	host, port, err := net.SplitHostPort(kdc)
+	if err != nil {
+		// Bare host: IPv4 ("10.0.0.1"), hostname ("dc.example.com"),
+		// unbracketed IPv6 ("::1"), or bracketed-but-portless IPv6 ("[::1]").
+		// Strip wrapping brackets before re-joining so JoinHostPort doesn't
+		// double-bracket ("[::1]" → "[[::1]]:88"). TrimPrefix/TrimSuffix is
+		// idempotent if the brackets aren't present.
+		host = strings.TrimSuffix(strings.TrimPrefix(kdc, "["), "]")
+		port = defaultPort
+	} else if port == "" {
+		// "host:" — port-less colon-suffix form.
+		port = defaultPort
+	}
+	return net.JoinHostPort(host, port)
+}
+
+// SynthesizeKrb5Config builds the in-memory krb5.conf text for callers that
+// need only the KDC. For kpasswd callers, use SynthesizeKrb5ConfigWithKpasswd.
+// kdc may be a bare host, host:port, or bracketed IPv6 — FormatKDC normalizes.
+func SynthesizeKrb5Config(realm, kdc string) string {
+	return fmt.Sprintf(`
+[libdefaults]
+  default_realm = %s
+  dns_lookup_realm = false
+  dns_lookup_kdc = false
+  udp_preference_limit = 1
+[realms]
+  %s = {
+    kdc = %s
+  }
+`, realm, realm, FormatKDC(kdc, "88"))
+}
+
+// SynthesizeKrb5ConfigWithKpasswd is SynthesizeKrb5Config plus a kpasswd_server
+// per-realm line. Both kdc and kpasswdServer accept the same input forms.
+func SynthesizeKrb5ConfigWithKpasswd(realm, kdc, kpasswdServer string) string {
+	return fmt.Sprintf(`
+[libdefaults]
+  default_realm = %s
+  dns_lookup_realm = false
+  dns_lookup_kdc = false
+  udp_preference_limit = 1
+[realms]
+  %s = {
+    kdc = %s
+    kpasswd_server = %s
+  }
+`, realm, realm, FormatKDC(kdc, "88"), FormatKDC(kpasswdServer, "464"))
+}
 
 // OID for Kerberos V5 (GSSAPI)
 var oidKerberos = asn1.ObjectIdentifier{1, 2, 840, 113554, 1, 2, 2}
@@ -102,18 +201,7 @@ func NewClientFromSession(creds *session.Credentials, target session.Target, dcI
 				realm = ccacheRealm
 			}
 
-			// Create config with the correct realm from ccache
-			cfgStr := fmt.Sprintf(`
-[libdefaults]
-  default_realm = %s
-  dns_lookup_realm = false
-  dns_lookup_kdc = false
-[realms]
-  %s = {
-    kdc = %s:88
-  }
-`, realm, realm, kdc)
-			cfg, err := config.NewFromString(cfgStr)
+			cfg, err := config.NewFromString(SynthesizeKrb5Config(realm, kdc))
 			if err != nil {
 				return nil, fmt.Errorf("failed to create krb5 config: %v", err)
 			}
@@ -126,7 +214,7 @@ func NewClientFromSession(creds *session.Credentials, target session.Target, dcI
 			}
 
 			// Try to create client from ccache (requires TGT)
-			cl, err := client.NewFromCCache(ccache, cfg)
+			cl, err := client.NewFromCCache(TransportKDCDialer{}, ccache, cfg)
 			if err == nil {
 				krbClient.KrbClient = cl
 			}
@@ -136,18 +224,7 @@ func NewClientFromSession(creds *session.Credentials, target session.Target, dcI
 		}
 	}
 
-	// Create config for non-ccache cases
-	cfgStr := fmt.Sprintf(`
-[libdefaults]
-  default_realm = %s
-  dns_lookup_realm = false
-  dns_lookup_kdc = false
-[realms]
-  %s = {
-    kdc = %s:88
-  }
-`, realm, realm, kdc)
-	cfg, err := config.NewFromString(cfgStr)
+	cfg, err := config.NewFromString(SynthesizeKrb5Config(realm, kdc))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create krb5 config: %v", err)
 	}
@@ -164,7 +241,7 @@ func NewClientFromSession(creds *session.Credentials, target session.Target, dcI
 		if err != nil {
 			return nil, fmt.Errorf("failed to load keytab %s: %v", creds.Keytab, err)
 		}
-		krbClient.KrbClient = client.NewWithKeytab(creds.Username, realm, kt, cfg, client.DisablePAFXFAST(true))
+		krbClient.KrbClient = client.NewWithKeytab(TransportKDCDialer{}, creds.Username, realm, kt, cfg, client.DisablePAFXFAST(true))
 		return krbClient, nil
 	}
 
@@ -173,7 +250,7 @@ func NewClientFromSession(creds *session.Credentials, target session.Target, dcI
 		// Check if it's an AES key (64 hex chars)?
 		// Note: Manual Keytab construction is blocked by unexported keytab.entry in gokrb5 v8.
 		// For now, treat everything as a password.
-		krbClient.KrbClient = client.NewWithPassword(creds.Username, realm, creds.Password, cfg, client.DisablePAFXFAST(true))
+		krbClient.KrbClient = client.NewWithPassword(TransportKDCDialer{}, creds.Username, realm, creds.Password, cfg, client.DisablePAFXFAST(true))
 		return krbClient, nil
 	}
 	return nil, fmt.Errorf("no valid kerberos credentials found (set KRB5CCNAME, provide password, or use -keytab)")

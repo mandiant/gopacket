@@ -24,7 +24,7 @@ import (
 	"github.com/mandiant/gopacket/pkg/kerberos"
 	"github.com/mandiant/gopacket/pkg/session"
 
-	"github.com/jcmturner/gokrb5/v8/iana/nametype"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/nametype"
 )
 
 var (

@@ -81,6 +81,17 @@ func (d *Dialer) Dial(network, address string) (net.Conn, error) {
 	return DialTimeout(network, address, d.TimeoutSec)
 }
 
+// ContextDialer is the value-typed counterpart of Dialer for APIs that expect
+// a DialContext method (e.g. github.com/oiweiwei/go-msrpc/dcerpc.WithDialer,
+// net/http.Transport.DialContext). Respects the configured proxy. The zero
+// value works.
+type ContextDialer struct{}
+
+// DialContext routes through the configured proxy if set, honoring ctx.
+func (ContextDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	return DialContext(ctx, network, address)
+}
+
 func splitHostPort(address string) (host, port string, err error) {
 	host, port, err = net.SplitHostPort(address)
 	if err != nil {

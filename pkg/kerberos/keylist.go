@@ -23,8 +23,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jcmturner/gokrb5/v8/crypto"
-	"github.com/jcmturner/gokrb5/v8/messages"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/crypto"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/messages"
 )
 
 // PA-DATA type for KERB-KEY-LIST-REQ (MS-KILE 2.2.11)

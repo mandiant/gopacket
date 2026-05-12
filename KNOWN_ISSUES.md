@@ -94,6 +94,27 @@ When reporting, please include:
 
 **Status:** By design. UDP tunneling over SOCKS5 is not a gopacket goal. If your workflow genuinely needs UDP over a proxy, use `proxychains` (which hooks libc at a lower level and can intercept UDP sockets) or a full VPN instead of `-proxy`.
 
+### Kerberos KDC traffic under `-proxy`
+
+All Kerberos KDC traffic (AS-REQ/AS-REP, TGS-REQ/TGS-REP, kpasswd) is tunneled through `-proxy` alongside the rest of the tool. This is enforced two ways:
+
+1. The embedded gokrb5 library has been forked in-tree at `pkg/third_party/gokrb5`. Every client constructor (`NewWithPassword`, `NewWithKeytab`, `NewFromCCache`) takes a required `KDCDialer` as its first argument, making proxy-bypass a compile error rather than a runtime leak. Production call sites all pass `kerberos.TransportKDCDialer{}`, which delegates to `pkg/transport`.
+2. The synthesized krb5 config in `pkg/kerberos` sets `udp_preference_limit = 1` unconditionally, so KRB5 never even attempts UDP/88 — direct and proxied paths behave identically. Modern KRB5 already needs TCP for PAC-bearing TGS responses; the legacy UDP "optimization" is dropped.
+
+`/etc/krb5.conf` and `$KRB5_CONFIG` are intentionally not consulted; the in-memory config is the only one used. A misconfigured host cannot subvert the proxy/DNS guarantees by re-enabling `dns_lookup_kdc` or lowering `udp_preference_limit`.
+
+If you add a new code path that constructs a gokrb5 client, the type system will require a `KDCDialer`. Use `kerberos.TransportKDCDialer{}`; the alternative `client.DirectDialer{}` exists only as an explicit escape hatch.
+
+### DCERPC Kerberos traffic under `-proxy` (secretsdump DCSync, wmiexec, wmiquery, wmipersist, dcomexec)
+
+The DCERPC Kerberos auth path uses a separate Kerberos library (`oiweiwei/gokrb5.fork/v9` reached via `oiweiwei/go-msrpc/ssp/krb5`) because go-msrpc's RPC machinery embeds it. Three things are required to keep that path leak-free, and the codebase enforces all three at every call site:
+
+1. **KDC dialer on the krb5 config.** `pkg/dcerpc/auth_kerberos.go` and the four DCOM tools set `krbConfig.KDCDialer = kerberos.TransportKDCDialer{}` on every `krb5.Config` they construct. Same dialer, same proxy guarantee as the rest of Kerberos.
+2. **DCERPC transport dialer.** Every `dcerpc.Dial(...)` is passed `dcerpc.WithDialer(transport.ContextDialer{})` so the TCP step honors the proxy.
+3. **StringBinding form for the OXID-pivot dial.** The second `dcerpc.Dial` per tool uses `"ncacn_ip_tcp:" + target.Host`, not the bare hostname. The prefix forces go-msrpc to parse the address as a StringBinding instead of triggering its hard-coded pre-dial `net.LookupIP`, which would otherwise leak the target hostname to the operator's local resolver. The FQDN is then handed verbatim to the SOCKS5 dialer so resolution stays proxy-side.
+
+Operator-visible behavior under `-proxy`: every byte of AD attack traffic (Kerberos, SMB, DCERPC, kpasswd, DCSync DRSUAPI, DCOM activation, WMI) is sent through the configured SOCKS5 proxy. Tcpdump on the operator host shows no traffic to the AD subnet at all — only SOCKS5 frames to the proxy. Verified end-to-end in a GOAD lab with secretsdump DCSync extracting `krbtgt`, wmiexec returning `whoami` output, and getTGT/getST/GetUserSPNs/GetNPUsers exchanging with the KDC — all silent on the wire, while the same getTGT without `-proxy` immediately emits direct SYN packets to the KDC.
+
 ---
 
 ## 7. Remaining Gaps (Low Priority)

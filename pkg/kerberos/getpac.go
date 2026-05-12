@@ -21,15 +21,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/crypto"
-	"github.com/jcmturner/gokrb5/v8/iana"
-	"github.com/jcmturner/gokrb5/v8/iana/flags"
-	"github.com/jcmturner/gokrb5/v8/iana/msgtype"
-	"github.com/jcmturner/gokrb5/v8/iana/nametype"
-	"github.com/jcmturner/gokrb5/v8/iana/patype"
-	"github.com/jcmturner/gokrb5/v8/messages"
-	"github.com/jcmturner/gokrb5/v8/types"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/config"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/crypto"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/flags"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/msgtype"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/nametype"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/patype"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/messages"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/types"
 )
 
 // PACRequest holds configuration for a PAC retrieval request.
@@ -48,9 +48,13 @@ type PACRequest struct {
 func GetPAC(req *PACRequest) (*PAC, error) {
 	realm := strings.ToUpper(req.Domain)
 
-	// Build kerberos config
+	// Build kerberos config. Defense-in-depth: networking in this file is
+	// hand-rolled via sendKDCRequest → transport.Dial, so the opsec keys
+	// are no-ops here today. Stamp them so future use of a gokrb5 client
+	// inherits the proxy/DNS guarantees automatically.
 	cfg := config.New()
 	cfg.LibDefaults.DefaultRealm = realm
+	ApplyKrb5OpsecDefaults(cfg)
 	cfg.LibDefaults.DefaultTktEnctypes = []string{"aes256-cts-hmac-sha1-96", "aes128-cts-hmac-sha1-96", "rc4-hmac"}
 	cfg.LibDefaults.DefaultTktEnctypeIDs = []int32{18, 17, 23}
 	cfg.LibDefaults.DefaultTGSEnctypes = []string{"aes256-cts-hmac-sha1-96", "aes128-cts-hmac-sha1-96", "rc4-hmac"}

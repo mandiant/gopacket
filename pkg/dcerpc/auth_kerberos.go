@@ -33,6 +33,7 @@ import (
 	"github.com/oiweiwei/gokrb5.fork/v9/iana/flags"
 
 	"github.com/mandiant/gopacket/internal/build"
+	"github.com/mandiant/gopacket/pkg/kerberos"
 	"github.com/mandiant/gopacket/pkg/session"
 )
 
@@ -69,6 +70,14 @@ func NewKerberosAuthHandler(creds *session.Credentials, target session.Target, d
 	// Create Kerberos config
 	krbConfig := krb5.NewConfig()
 	krbConfig.DCEStyle = true // Required for DCE/RPC
+
+	// Route every KDC call this auth handler makes through pkg/transport.
+	// Without this, go-msrpc's krb5 SSP calls oiweiwei/gokrb5.fork/v9's
+	// client which falls back to net.Dial and leaks the operator IP to the
+	// KDC — see KNOWN_ISSUES.md §8 (Kerberos KDC traffic under -proxy).
+	// kerberos.TransportKDCDialer structurally satisfies the v9 KDCDialer
+	// interface (same Dial signature).
+	krbConfig.KDCDialer = kerberos.TransportKDCDialer{}
 
 	// Check if we should use ccache (no password provided)
 	if creds.Password == "" && creds.Hash == "" {
@@ -195,6 +204,8 @@ func NewKerberosAuthHandlerMultiRealm(creds *session.Credentials, target session
 
 	krbConfig := krb5.NewConfig()
 	krbConfig.DCEStyle = true
+	// Same proxy-routing requirement as NewKerberosAuthHandler.
+	krbConfig.KDCDialer = kerberos.TransportKDCDialer{}
 
 	// Use ccache-based credential
 	ccachePath := os.Getenv("KRB5CCNAME")

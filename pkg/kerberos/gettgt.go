@@ -26,11 +26,11 @@ import (
 	"github.com/mandiant/gopacket/pkg/transport"
 	"unicode/utf16"
 
-	"github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/crypto"
-	"github.com/jcmturner/gokrb5/v8/iana/nametype"
-	"github.com/jcmturner/gokrb5/v8/messages"
-	"github.com/jcmturner/gokrb5/v8/types"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/config"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/crypto"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/nametype"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/messages"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/types"
 	"golang.org/x/crypto/md4"
 )
 
@@ -111,9 +111,13 @@ func GetTGT(req *TGTRequest) (*TGTResult, error) {
 		return nil, fmt.Errorf("no authentication method specified (need password, hash, or aesKey)")
 	}
 
-	// Build AS-REQ
+	// Build AS-REQ. Defense-in-depth: networking below uses transport.Dial
+	// directly (gokrb5's sendToKDC is never invoked), so the opsec keys are
+	// no-ops on this path. Stamping them now means a future refactor that
+	// introduces a gokrb5 client.Client inherits the proxy/DNS guarantees.
 	cfg := config.New()
 	cfg.LibDefaults.DefaultRealm = realm
+	ApplyKrb5OpsecDefaults(cfg)
 	cfg.LibDefaults.DefaultTktEnctypes = []string{etypeName(encType)}
 	cfg.LibDefaults.DefaultTktEnctypeIDs = []int32{encType}
 	cfg.LibDefaults.Forwardable = true
@@ -263,7 +267,7 @@ func buildPAEncTimestamp(key []byte, encType int32) (types.PAData, error) {
 
 // sendKDCRequest sends a Kerberos message to the KDC and returns the response.
 func sendKDCRequest(kdcHost string, data []byte) ([]byte, error) {
-	addr := fmt.Sprintf("%s:88", kdcHost)
+	addr := FormatKDC(kdcHost, "88")
 	conn, err := transport.Dial("tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to KDC %s: %v", addr, err)

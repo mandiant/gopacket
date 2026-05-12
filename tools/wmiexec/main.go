@@ -59,6 +59,7 @@ import (
 	"github.com/mandiant/gopacket/pkg/kerberos"
 	"github.com/mandiant/gopacket/pkg/session"
 	"github.com/mandiant/gopacket/pkg/smb"
+	"github.com/mandiant/gopacket/pkg/transport"
 )
 
 var (
@@ -116,6 +117,10 @@ func main() {
 	// Security options to pass to dcerpc clients
 	var securityOpts []dcerpc.Option
 	securityOpts = append(securityOpts, dcerpc.WithSign())
+	// Route every dcerpc dial (TCP + DNS) through pkg/transport so -proxy
+	// tunnels DCERPC traffic and avoids leaking target lookups to the
+	// operator's local resolver.
+	securityOpts = append(securityOpts, dcerpc.WithDialer(transport.ContextDialer{}))
 
 	if creds.UseKerberos {
 		// Kerberos authentication via ccache
@@ -141,21 +146,16 @@ func main() {
 		ccCred := credential.NewFromCCache(fullUser, ccache)
 		gssapi.AddCredential(ccCred)
 
-		// Create Kerberos config with KDC address
+		// Create Kerberos config via the shared synthesizer so opsec defaults
+		// (udp_preference_limit=1, dns_lookup_kdc/realm=false) stay aligned
+		// with the rest of the project. Prefer -dc-ip over target.Host so a
+		// non-DC target (e.g. member server) doesn't get used as the KDC.
 		realm := strings.ToUpper(creds.Domain)
-		kdc := target.Host // Use target as KDC
-		confStr := fmt.Sprintf(`[libdefaults]
-    default_realm = %s
-    dns_lookup_realm = false
-    dns_lookup_kdc = false
-
-[realms]
-    %s = {
-        kdc = %s
-    }
-`, realm, realm, kdc)
-
-		krb5Conf, err := gokrb5config.NewFromString(confStr)
+		kdc := creds.DCIP
+		if kdc == "" {
+			kdc = target.Host
+		}
+		krb5Conf, err := gokrb5config.NewFromString(kerberos.SynthesizeKrb5Config(realm, kdc))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[-] Failed to create Kerberos config: %v\n", err)
 			os.Exit(1)
@@ -165,6 +165,10 @@ func main() {
 		krbConfig := krb5.NewConfig()
 		krbConfig.KRB5Config = krb5.ParsedLibDefaults(krb5Conf)
 		krbConfig.DCEStyle = true
+		// Route every KDC dial through pkg/transport so -proxy / ALL_PROXY
+		// tunnels Kerberos. Without this, go-msrpc's krb5 SSP falls back to
+		// net.Dial and leaks the operator IP to the KDC.
+		krbConfig.KDCDialer = kerberos.TransportKDCDialer{}
 
 		// Add mechanisms with config
 		gssapi.AddMechanism(ssp.SPNEGO)
@@ -195,7 +199,7 @@ func main() {
 
 	// 1. Connect to Endpoint Mapper (Port 135)
 	log.Info().Msgf("Connecting to %s:135", target.Host)
-	cc, err := dcerpc.Dial(ctx, net.JoinHostPort(target.Host, "135"))
+	cc, err := dcerpc.Dial(ctx, net.JoinHostPort(target.Host, "135"), dcerpc.WithDialer(transport.ContextDialer{}))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[-] Dial 135 failed: %v\n", err)
 		os.Exit(1)
@@ -249,7 +253,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	wcc, err := dcerpc.Dial(ctx, target.Host, endpoints...)
+	// "ncacn_ip_tcp:" prefix forces go-msrpc to parse this as a StringBinding
+	// (binding.go), bypassing the LookupIP path in ParseServerAddrWithDNSLookup
+	// that fires for bare-FQDN inputs. The FQDN is then handed to our SOCKS5
+	// dialer so resolution stays on the proxy side.
+	wcc, err := dcerpc.Dial(ctx, "ncacn_ip_tcp:"+target.Host, append(endpoints, dcerpc.WithDialer(transport.ContextDialer{}))...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[-] Dial WMI failed: %v\n", err)
 		os.Exit(1)

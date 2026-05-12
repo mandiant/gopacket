@@ -35,3 +35,15 @@ the full license text.
     A vendored SMB2/SMB3 client library originally authored by Hiroshi Ioka
     and contributors, distributed under the BSD 3-Clause License.
     Upstream: https://github.com/hirochachacha/go-smb2
+
+  * pkg/third_party/gokrb5/
+    A vendored Kerberos 5 client library originally authored by Jonathan
+    Turner and contributors, distributed under the Apache License, Version
+    2.0. See pkg/third_party/gokrb5/LICENSE for the full text. The vendored
+    copy has been modified by this project: the gokrb5 client constructors
+    (NewWithPassword, NewWithKeytab, NewFromCCache) now require a KDCDialer
+    as their first argument, KDC TCP/UDP I/O routes through the supplied
+    dialer instead of net.DialTimeout, and unused subpackages (service/,
+    spnego/) have been removed. See the commit log and KNOWN_ISSUES.md for
+    the full change record.
+    Upstream: https://github.com/jcmturner/gokrb5

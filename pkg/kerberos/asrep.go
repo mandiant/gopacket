@@ -20,10 +20,10 @@ import (
 
 	"github.com/mandiant/gopacket/pkg/transport"
 
-	"github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/iana/nametype"
-	"github.com/jcmturner/gokrb5/v8/messages"
-	"github.com/jcmturner/gokrb5/v8/types"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/config"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/iana/nametype"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/messages"
+	"github.com/mandiant/gopacket/pkg/third_party/gokrb5/types"
 )
 
 // GetASREP fetches the AS-REP for a user and returns the hash.
@@ -39,6 +39,11 @@ func GetASREP(username, domain, kdcHost string, format ...string) (string, error
 
 	cfg := config.New()
 	cfg.LibDefaults.DefaultRealm = realm
+	// Defense-in-depth: this file dials the KDC via transport.Dial directly
+	// (gokrb5's sendToKDC is never invoked), so the opsec keys are currently
+	// no-ops here. Stamp them anyway so a future refactor introducing a
+	// gokrb5 client.Client to this path inherits the proxy/DNS guarantees.
+	ApplyKrb5OpsecDefaults(cfg)
 	// Request RC4 (etype 23) for faster cracking - matches Impacket behavior
 	cfg.LibDefaults.DefaultTktEnctypes = []string{"rc4-hmac"}
 	cfg.LibDefaults.DefaultTktEnctypeIDs = []int32{23}
@@ -62,7 +67,7 @@ func GetASREP(username, domain, kdcHost string, format ...string) (string, error
 	}
 
 	// Connect to KDC (Port 88)
-	conn, err := transport.Dial("tcp", fmt.Sprintf("%s:%d", kdcHost, 88))
+	conn, err := transport.Dial("tcp", FormatKDC(kdcHost, "88"))
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to KDC: %v", err)
 	}

@@ -9,8 +9,11 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.6.0
+	github.com/hashicorp/go-uuid v1.0.3
+	github.com/jcmturner/aescts/v2 v2.0.0
+	github.com/jcmturner/dnsutils/v2 v2.0.0
 	github.com/jcmturner/gofork v1.7.6
-	github.com/jcmturner/gokrb5/v8 v8.4.4
+	github.com/jcmturner/rpc/v2 v2.0.3
 	github.com/oiweiwei/go-msrpc v1.2.12
 	github.com/oiweiwei/gokrb5.fork/v9 v9.0.6
 	github.com/rs/zerolog v1.32.0
@@ -23,12 +26,9 @@ require (
 
 require (
 	github.com/Azure/go-ntlmssp v0.1.1 // indirect
-	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/indece-official/go-ebcdic v1.2.0 // indirect
-	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
-	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
 	github.com/jcmturner/goidentity/v6 v6.0.1 // indirect
-	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
+	github.com/jcmturner/gokrb5/v8 v8.4.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/oiweiwei/go-smb2.fork v1.0.0 // indirect
