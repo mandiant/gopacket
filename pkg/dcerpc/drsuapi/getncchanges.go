@@ -544,8 +544,11 @@ func processAttribute(attrTyp uint32, valData []byte, obj *ReplicatedObject, ses
 
 	case DRSUAPI_ATTID_objectSid:
 		obj.ObjectSid = valData
-		// Extract RID from SID
-		if len(valData) >= 8 {
+		// Extract RID from SID. Layout: rev(1) + subAuthCount(1) + idAuth(6)
+		// + subAuth[N](4 each). RID is the last SubAuthority, so we need at
+		// least one SubAuthority present — minimum 12 bytes. At len 8 the
+		// "last 4 bytes" would be IdentifierAuthority tail, not a RID.
+		if len(valData) >= 12 {
 			obj.RID = binary.LittleEndian.Uint32(valData[len(valData)-4:])
 		}
 
