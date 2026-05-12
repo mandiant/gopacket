@@ -252,7 +252,13 @@ func (h *Hive) GetValueData(vk *VKRecord) ([]byte, error) {
 	isResident := vk.DataLen&0x80000000 != 0
 
 	if isResident {
-		// Data is stored in the DataOffset field itself (up to 4 bytes)
+		// Data is stored in the DataOffset field itself (up to 4 bytes).
+		// dataLen is attacker-controlled (lower 31 bits of vk.DataLen, read
+		// verbatim from hive bytes); reject lengths beyond the 4-byte cap
+		// before slicing to prevent a panic on malformed hives.
+		if dataLen > 4 {
+			return nil, fmt.Errorf("resident data length %d exceeds maximum of 4 bytes", dataLen)
+		}
 		data := make([]byte, 4)
 		binary.LittleEndian.PutUint32(data, vk.DataOffset)
 		return data[:dataLen], nil
@@ -376,9 +382,15 @@ func (h *Hive) enumSubKeys(nk *NKRecord) ([]subKeyInfo, error) {
 			}
 			subListOffset := int32(binary.LittleEndian.Uint32(cell[entryOff : entryOff+4]))
 
-			// Recursively process sub-list
+			// Recursively process sub-list. readCell can return a slice
+			// shorter than the 4-byte cell header (e.g. minimum-size cell with
+			// no usable bytes), so guard against an indexing panic before
+			// reading the sub-list signature and count.
 			subCell, err := h.readCell(subListOffset)
 			if err != nil {
+				continue
+			}
+			if len(subCell) < 4 {
 				continue
 			}
 
@@ -636,16 +648,32 @@ func (h *Hive) SetValueData(keyOffset int32, valueName string, newData []byte) e
 		if isResident {
 			// Data stored inline in the VK record's DataOffset field
 			// VK cell starts at cellOffset(vkOffset)+4 (skip cell size)
-			// DataOffset is at bytes 8..12 of the VK record (after sig:2 + nameLen:2 + dataLen:4)
+			// DataOffset is at bytes 8..12 of the VK record (after sig:2 + nameLen:2 + dataLen:4).
+			// Same 4-byte cap as the read path in GetValueData; without this
+			// guard a length-matching newData buffer of 5+ bytes would silently
+			// scribble into the adjacent hive cell.
+			if dataLen > 4 {
+				return fmt.Errorf("resident data length %d exceeds maximum of 4 bytes", dataLen)
+			}
 			vkPos := h.cellOffset(vkOffset) + 4 // skip cell size dword
 			dataFieldPos := vkPos + 8           // offset of DataOffset field
 			copy(h.data[dataFieldPos:dataFieldPos+int(dataLen)], newData)
 			return nil
 		}
 
-		// Data is in a separate cell; overwrite in place
-		dataPos := h.cellOffset(int32(vk.DataOffset)) + 4 // skip cell size
-		copy(h.data[dataPos:dataPos+int(dataLen)], newData)
+		// Data is in a separate cell; overwrite in place. vk.DataOffset is
+		// attacker-controlled in malformed hives, so route through readCell
+		// (which validates the cell header and bounds) and verify dataLen
+		// fits before mutating. Without this guard a hostile offset can
+		// scribble over arbitrary hive bytes including the regf header.
+		cell, err := h.readCell(int32(vk.DataOffset))
+		if err != nil {
+			return err
+		}
+		if int(dataLen) > len(cell) {
+			return fmt.Errorf("value data length %d exceeds cell size %d", dataLen, len(cell))
+		}
+		copy(cell[:dataLen], newData)
 		return nil
 	}
 
