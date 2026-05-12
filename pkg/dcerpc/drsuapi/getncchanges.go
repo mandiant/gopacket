@@ -246,14 +246,15 @@ func writeDSNAME(buf *bytes.Buffer, nameOrGUID string) {
 
 	// Calculate structLen: the size of the entire DSNAME structure
 	// structLen(4) + SidLen(4) + Guid(16) + Sid(28) + NameLen(4) + StringName((nameLen+1)*2)
+	// MS-DRSR 4.1.4.1.1 specifies structLen as the exact byte size, rounded
+	// to a 4-byte boundary. Impacket carries a "+2" on top of the round-up
+	// that no part of the spec or wire trace justifies; AD is forgiving but
+	// a stricter implementation would reject. Keep just the alignment round.
 	stringNameBytes := charCount * 2
 	structLen := uint32(4 + 4 + 16 + 28 + 4 + stringNameBytes)
-	// Align to 4-byte boundary for the structure size
 	if structLen%4 != 0 {
 		structLen += 4 - (structLen % 4)
 	}
-	// Per Impacket, add 2 more bytes (possibly for additional alignment)
-	structLen += 2
 
 	// Track start for final alignment
 	startOffset := buf.Len()
