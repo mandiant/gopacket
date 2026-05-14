@@ -17,10 +17,10 @@ require (
 	github.com/oiweiwei/go-msrpc v1.2.12
 	github.com/oiweiwei/gokrb5.fork/v9 v9.0.6
 	github.com/rs/zerolog v1.32.0
-	golang.org/x/crypto v0.36.0
-	golang.org/x/net v0.38.0
+	golang.org/x/crypto v0.45.0
+	golang.org/x/net v0.47.0
 	golang.org/x/term v0.39.0
-	golang.org/x/text v0.23.0
+	golang.org/x/text v0.31.0
 	software.sslmate.com/src/go-pkcs12 v0.7.0
 )
 
