@@ -211,6 +211,79 @@ func TestSeal(t *testing.T) {
 	}
 }
 
+func TestAnonymousAuthenticate(t *testing.T) {
+	// Empty User/Password/Hash => true anonymous (null session) bind.
+	// Set Domain/Workstation to confirm they're stripped from the token
+	// rather than leaked into the payload.
+	c := &Client{
+		Domain:      "SHOULD_NOT_APPEAR",
+		Workstation: "SHOULD_NOT_APPEAR",
+	}
+
+	s := NewServer("server")
+
+	nmsg, err := c.Negotiate()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cmsg, err := s.Challenge(nmsg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	amsg, err := c.Authenticate(cmsg)
+	if err != nil {
+		t.Fatalf("anonymous Authenticate returned error: %v", err)
+	}
+	if amsg == nil {
+		t.Fatal("anonymous Authenticate returned nil message")
+	}
+
+	if le.Uint32(amsg[60:64])&NTLMSSP_ANONYMOUS == 0 {
+		t.Errorf("NTLMSSP_ANONYMOUS flag not set in NegotiateFlags %#x", le.Uint32(amsg[60:64]))
+	}
+
+	if got := le.Uint16(amsg[12:14]); got != 1 {
+		t.Errorf("LmChallengeResponseLen = %d, want 1", got)
+	}
+
+	if got := le.Uint16(amsg[20:22]); got != 0 {
+		t.Errorf("NtChallengeResponseLen = %d, want 0", got)
+	}
+
+	if got := le.Uint16(amsg[28:30]); got != 0 {
+		t.Errorf("DomainNameLen = %d, want 0 (must not leak)", got)
+	}
+
+	if got := le.Uint16(amsg[36:38]); got != 0 {
+		t.Errorf("UserNameLen = %d, want 0", got)
+	}
+
+	if got := le.Uint16(amsg[44:46]); got != 0 {
+		t.Errorf("WorkstationLen = %d, want 0 (must not leak)", got)
+	}
+
+	// LmChallengeResponse must be a single 0x00 byte at its declared offset.
+	lmOff := le.Uint32(amsg[16:20])
+	if int(lmOff) >= len(amsg) {
+		t.Fatalf("LmChallengeResponseBufferOffset %d out of range (len %d)", lmOff, len(amsg))
+	}
+	if amsg[lmOff] != 0 {
+		t.Errorf("LmChallengeResponse byte = %#x, want 0x00", amsg[lmOff])
+	}
+
+	// No session key for a null session.
+	if c.Session() != nil {
+		t.Error("expected nil session for anonymous bind")
+	}
+
+	// No MIC on the anonymous path.
+	if !bytes.Equal(amsg[72:88], make([]byte, 16)) {
+		t.Errorf("expected zero MIC, got %x", amsg[72:88])
+	}
+}
+
 func TestClientServer(t *testing.T) {
 	c := &Client{
 		User:     "user",

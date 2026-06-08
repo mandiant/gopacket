@@ -134,7 +134,17 @@ func (c *Client) Authenticate(cmsg []byte) (amsg []byte, err error) {
 	user := utf16le.EncodeStringToBytes(c.User)
 	workstation := utf16le.EncodeStringToBytes(c.Workstation)
 
-	if domain == nil {
+	// Anonymous (null session) bind: no username, no password, no hash.
+	// Per [MS-NLMP] 3.1.5.1.2 DomainName, UserName and Workstation must all
+	// be empty, so force them empty here (UserName already is) and suppress
+	// the targetName fallback below regardless of any value the caller set.
+	anonymous := c.User == "" && c.Password == "" && c.Hash == nil
+	if anonymous {
+		domain = nil
+		workstation = nil
+	}
+
+	if domain == nil && !anonymous {
 		domain = targetName
 	}
 
@@ -179,7 +189,7 @@ func (c *Client) Authenticate(cmsg []byte) (amsg []byte, err error) {
 		off += len
 	}
 
-	if c.User != "" || c.Password != "" || c.Hash != nil {
+	if !anonymous {
 		var err error
 		var h hash.Hash
 
@@ -308,6 +318,32 @@ func (c *Client) Authenticate(cmsg []byte) (amsg []byte, err error) {
 		}
 
 		c.session = session
+	} else {
+		// Anonymous authentication [MS-NLMP] 3.1.5.1.2:
+		//   NtChallengeResponse: empty
+		//   LmChallengeResponse: Z(1) — a single 0x00 byte
+		//   NTLMSSP_ANONYMOUS set; no MIC; no session key (null sessions aren't signed).
+		// Clear the signing/sealing/key-exchange flags: we establish no session
+		// key, so leaving KEY_EXCH set with a zero-length EncryptedRandomSessionKey
+		// makes strict servers (e.g. Samba) reject the bind with INVALID_PARAMETER.
+		flags |= NTLMSSP_ANONYMOUS
+		flags &^= NTLMSSP_NEGOTIATE_KEY_EXCH | NTLMSSP_NEGOTIATE_SIGN | NTLMSSP_NEGOTIATE_SEAL | NTLMSSP_NEGOTIATE_ALWAYS_SIGN
+
+		// LmChallengeResponse = single 0x00 byte at the current payload offset.
+		le.PutUint16(amsg[12:14], 1)           // LmChallengeResponseLen
+		le.PutUint16(amsg[14:16], 1)           // LmChallengeResponseMaxLen
+		le.PutUint32(amsg[16:20], uint32(off)) // LmChallengeResponseBufferOffset
+		amsg[off] = 0
+		off++
+		// NtChallengeResponse + EncryptedRandomSessionKey fields stay zero (empty).
+
+		le.PutUint32(amsg[60:64], flags) // NegotiateFlags (with ANONYMOUS)
+		copy(amsg[64:], version)         // Version
+		// No MIC: leave amsg[72:88] zero. c.session stays nil.
+
+		// Trim the buffer (it was sized for a full NTLMv2 response) so no
+		// stray trailing zero bytes ride along in the token.
+		amsg = amsg[:off]
 	}
 
 	return amsg, nil

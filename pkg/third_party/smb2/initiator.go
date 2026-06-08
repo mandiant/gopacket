@@ -58,15 +58,24 @@ func (i *NTLMInitiator) AcceptSecContext(sc []byte) ([]byte, error) {
 }
 
 func (i *NTLMInitiator) Sum(bs []byte) []byte {
+	if i.ntlm == nil || i.ntlm.Session() == nil {
+		return nil
+	}
 	mic, _ := i.ntlm.Session().Sum(bs, i.seqNum)
 	return mic
 }
 
 func (i *NTLMInitiator) SessionKey() []byte {
+	if i.ntlm == nil || i.ntlm.Session() == nil {
+		return nil
+	}
 	return i.ntlm.Session().SessionKey()
 }
 
 func (i *NTLMInitiator) infoMap() *ntlm.InfoMap {
+	if i.ntlm == nil || i.ntlm.Session() == nil {
+		return nil
+	}
 	return i.ntlm.Session().InfoMap()
 }
 

@@ -46,11 +46,6 @@ func (d *Dialer) DialContext(ctx context.Context, tcpConn net.Conn) (*Session, e
 	if d.Initiator == nil {
 		return nil, &InternalError{"Initiator is empty"}
 	}
-	if i, ok := d.Initiator.(*NTLMInitiator); ok {
-		if i.User == "" {
-			return nil, &InternalError{"Anonymous account is not supported yet. Use guest account instead"}
-		}
-	}
 
 	maxCreditBalance := d.MaxCreditBalance
 	if maxCreditBalance == 0 {
