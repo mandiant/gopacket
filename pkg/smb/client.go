@@ -133,8 +133,6 @@ func (c *Client) Connect() error {
 		Initiator: initiator,
 
 		Negotiator: smb2.Negotiator{
-
-			SpecifiedDialect:      0x0210,
 			RequireMessageSigning: true,
 		},
 	}
