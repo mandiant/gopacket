@@ -237,6 +237,15 @@ func ParseCMSEnvelopedData(data []byte) (*CMSEnvelopedData, []byte, error) {
 		}
 		pos = otherEnd
 	}
+
+	// Fallback: the structured walk above assumes one specific ASN.1 nesting
+	// for the protection descriptor, but Microsoft's encoding varies across
+	// Windows versions. The target SID is always a UTF8String, so scan the
+	// kekid bytes directly for an ASCII "S-1-..." string if we missed it.
+	if cms.SID == "" {
+		cms.SID = scanForSID(data[:kekidEnd])
+	}
+
 	pos = kekidEnd
 
 	// keyEncryptionAlgorithm AlgorithmIdentifier - skip
@@ -320,6 +329,23 @@ func ParseCMSEnvelopedData(data []byte) (*CMSEnvelopedData, []byte, error) {
 	}
 
 	return cms, remaining, nil
+}
+
+// scanForSID searches raw bytes for an ASCII SID string ("S-1-...").
+// LAPS v2 protection descriptors always encode the target SID as a
+// UTF8String, so a direct scan is more robust than tracking the exact
+// ASN.1 nesting, which differs between Windows versions.
+func scanForSID(data []byte) string {
+	for i := 0; i+4 <= len(data); i++ {
+		if data[i] == 'S' && data[i+1] == '-' && data[i+2] == '1' && data[i+3] == '-' {
+			j := i + 4
+			for j < len(data) && (data[j] == '-' || (data[j] >= '0' && data[j] <= '9')) {
+				j++
+			}
+			return string(data[i:j])
+		}
+	}
+	return ""
 }
 
 // readDerLength reads a DER length and returns the length value and new position.
@@ -411,12 +437,15 @@ func CreateSecurityDescriptor(sid string) []byte {
 	copy(acl[8:], ace1)
 	copy(acl[8+len(ace1):], ace2)
 
-	// Calculate offsets
+	// Calculate offsets. MS-GKDI derives the returned key from the exact bytes
+	// of the target security descriptor, so the layout must match the canonical
+	// self-relative form Windows produces: header, then DACL, then owner SID,
+	// then group SID.
 	headerSize := 20
-	ownerOffset := headerSize
+	daclOffset := headerSize
+	ownerOffset := daclOffset + len(acl)
 	groupOffset := ownerOffset + len(ownerSid)
-	daclOffset := groupOffset + len(groupSid)
-	totalSize := daclOffset + len(acl)
+	totalSize := groupOffset + len(groupSid)
 
 	sd := make([]byte, totalSize)
 	sd[0] = 0x01 // Revision
@@ -428,9 +457,9 @@ func CreateSecurityDescriptor(sid string) []byte {
 	binary.LittleEndian.PutUint32(sd[12:16], 0) // No SACL
 	binary.LittleEndian.PutUint32(sd[16:20], uint32(daclOffset))
 
+	copy(sd[daclOffset:], acl)
 	copy(sd[ownerOffset:], ownerSid)
 	copy(sd[groupOffset:], groupSid)
-	copy(sd[daclOffset:], acl)
 
 	return sd
 }
@@ -554,7 +583,6 @@ func ComputeKEK(gke *gkdi.GroupKeyEnvelope, keyID *KeyIdentifier) ([]byte, error
 	var kekContext []byte
 
 	if keyID.IsPublicKey() {
-		// Generate KEK secret from public key
 		kekSecret, kekContext, err = generateKekSecretFromPubkey(gke, keyID, l2Key)
 		if err != nil {
 			return nil, err
@@ -573,7 +601,11 @@ func generateKekSecretFromPubkey(gke *gkdi.GroupKeyEnvelope, keyID *KeyIdentifie
 	secAlgo := gke.GetSecAlgoName()
 
 	privateKeyLen := (gke.PrivKeyLen + 7) / 8
-	privateKey := kdf(kdfHashName, l2Key, KDS_SERVICE_LABEL, gke.SecAlgo, int(privateKeyLen))
+	// Build the secret-agreement-algorithm context as the parsed name plus a
+	// UTF-16LE null terminator, matching the reference implementation. Using
+	// the raw envelope bytes risks an off-by-a-null-terminator mismatch.
+	secAlgoContext := utf16le(secAlgo + "\x00")
+	privateKey := kdf(kdfHashName, l2Key, KDS_SERVICE_LABEL, secAlgoContext, int(privateKeyLen))
 
 	if secAlgo == "DH" {
 		// Parse FFC DH Key from keyID.Unknown
@@ -598,7 +630,10 @@ func generateKekSecretFromPubkey(gke *gkdi.GroupKeyEnvelope, keyID *KeyIdentifie
 		_ = generator // Not used in computation
 
 		sharedSecretInt := new(big.Int).Exp(pubKeyInt, privKeyInt, fieldOrderInt)
-		sharedSecret := sharedSecretInt.Bytes()
+		// Left-pad the shared secret to the DH field size; big.Int.Bytes()
+		// drops leading zero bytes, which corrupts the KDF input.
+		sharedSecret := make([]byte, int(keyLen))
+		sharedSecretInt.FillBytes(sharedSecret)
 
 		// Compute KEK using KDF
 		kekContext := KEK_PUBLIC_KEY_LABEL
