@@ -284,22 +284,16 @@ func decryptLAPSv2Password(encryptedBlob []byte, target session.Target, creds *s
 		}
 	}
 
-	// Parse the decrypted JSON
-	// Format: {"n":"Administrator","t":"2024-01-01T00:00:00","p":"password"}
-	// The plaintext may have trailing data (18 bytes of metadata)
-	jsonData := plaintext
-	if len(jsonData) > 18 {
-		// Try to find the end of JSON object
-		for i := len(jsonData) - 1; i >= 0; i-- {
-			if jsonData[i] == '}' {
-				jsonData = jsonData[:i+1]
-				break
-			}
-		}
-	}
-
-	// Convert from UTF-16LE to string
-	jsonStr := utf16ToString(jsonData)
+	// Decode the UTF-16LE plaintext. utf16ToString stops at the first NUL, so
+	// any NUL-terminated trailing metadata is dropped; parseLAPSv2JSON tolerates
+	// any remaining trailing bytes after the JSON object.
+	//
+	// Note: the previous approach scanned the raw UTF-16LE bytes backwards for a
+	// '}' (0x7D) and truncated there. Because '}' encodes as the two bytes
+	// 7D 00, that truncation kept the low byte but dropped the high 00, leaving
+	// an orphaned byte that utf16ToString discarded - silently deleting the
+	// closing brace and breaking every parse.
+	jsonStr := utf16ToString(plaintext)
 
 	username, password, ok := parseLAPSv2JSON(jsonStr)
 	if !ok {
@@ -342,7 +336,10 @@ func parseLAPSv2JSON(jsonStr string) (username, password string, ok bool) {
 		T string `json:"t"` // timestamp
 		P string `json:"p"` // password
 	}
-	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+	// Use a streaming decoder rather than json.Unmarshal: Windows LAPS may append
+	// trailing metadata after the JSON object. Unmarshal rejects trailing data,
+	// while Decode reads exactly one value and ignores whatever follows.
+	if err := json.NewDecoder(strings.NewReader(jsonStr)).Decode(&data); err != nil {
 		return "", "", false
 	}
 	return data.N, data.P, true
