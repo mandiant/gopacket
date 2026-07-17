@@ -15,6 +15,7 @@
 package smb
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -26,6 +27,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
+
+	"golang.org/x/net/proxy"
 
 	"github.com/mandiant/gopacket/internal/build"
 	"github.com/mandiant/gopacket/pkg/kerberos"
@@ -39,21 +43,80 @@ type Client struct {
 	Session   *smb2.Session
 	Target    session.Target
 	Creds     *session.Credentials
-	dialer    *transport.Dialer
 	conn      net.Conn
 	initiator smb2.Initiator
+
+	injectedDialer proxy.ContextDialer // set by WithDialer; nil = use default
+	injectedConn   net.Conn            // set by WithConn; nil = dial
+	ownsConn       bool                // true when we dialed c.conn; gates Close()
 
 	currentShare *smb2.Share
 	ipcShare     *smb2.Share
 	currentPath  string
 }
 
-func NewClient(target session.Target, creds *session.Credentials) *Client {
-	return &Client{
+// Option configures a Client at construction. See WithDialer / WithConn.
+type Option func(*Client)
+
+// WithDialer routes the SMB connect (and, under Kerberos, the KDC dial) through
+// d instead of the default proxy-aware transport. Supplying a dialer BYPASSES
+// the global -proxy egress control; the caller owns egress.
+func WithDialer(d proxy.ContextDialer) Option {
+	return func(c *Client) { c.injectedDialer = d }
+}
+
+// WithConn uses an already-open connection for the SMB session instead of
+// dialing. BYPASSES the global -proxy egress control. The caller retains
+// ownership: Close() will NOT close an injected conn. The caller must still set
+// Target.Host correctly, since the Kerberos SPN ("cifs/<Target.Host>") is
+// derived from it even when the socket is injected. Under Kerberos, the KDC
+// dial honors WithDialer if one was also supplied; WithConn alone leaves the
+// KDC dial on the default proxy-aware path and Connect() logs a warning.
+func WithConn(conn net.Conn) Option {
+	return func(c *Client) { c.injectedConn = conn }
+}
+
+func NewClient(target session.Target, creds *session.Credentials, opts ...Option) *Client {
+	c := &Client{
 		Target:      target,
 		Creds:       creds,
-		dialer:      &transport.Dialer{},
 		currentPath: "\\",
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+// socketDialer returns the dialer for the SMB socket: the injected one, or the
+// proxy-aware default.
+func (c *Client) socketDialer() proxy.ContextDialer {
+	if c.injectedDialer != nil {
+		return c.injectedDialer
+	}
+	return transport.ContextDialer{}
+}
+
+// dialConn returns the injected conn if present, otherwise dials address with
+// the default connect timeout. The explicit timeout is load-bearing: the proxy
+// branch of transport.DialContext does not inject one on its own. It also
+// records ownsConn so Close() never closes a caller-owned conn.
+func (c *Client) dialConn(ctx context.Context, address string) (net.Conn, error) {
+	if c.injectedConn != nil {
+		c.ownsConn = false
+		return c.injectedConn, nil
+	}
+	c.ownsConn = true
+	dctx, cancel := context.WithTimeout(ctx, transport.DefaultTimeout*time.Second)
+	defer cancel()
+	return c.socketDialer().DialContext(dctx, "tcp", address)
+}
+
+// closeConnIfOwned closes the transport conn only when this client dialed it,
+// leaving a caller-supplied (WithConn) conn open.
+func (c *Client) closeConnIfOwned() {
+	if c.conn != nil && c.ownsConn {
+		c.conn.Close()
 	}
 }
 
@@ -78,7 +141,7 @@ func (c *Client) Connect() error {
 
 	}
 
-	conn, err := c.dialer.Dial("tcp", address)
+	conn, err := c.dialConn(context.Background(), address)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s: %v", address, err)
 	}
@@ -144,7 +207,7 @@ func (c *Client) Connect() error {
 
 	s, err := d.Dial(conn)
 	if err != nil {
-		conn.Close()
+		c.closeConnIfOwned()
 		return fmt.Errorf("SMB login failed: %v", err)
 	}
 
@@ -193,9 +256,7 @@ func (c *Client) Close() {
 	if c.Session != nil {
 		c.Session.Logoff()
 	}
-	if c.conn != nil {
-		c.conn.Close()
-	}
+	c.closeConnIfOwned()
 }
 
 func (c *Client) ListShares() ([]string, error) {
