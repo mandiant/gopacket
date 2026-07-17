@@ -97,6 +97,23 @@ func (c *Client) socketDialer() proxy.ContextDialer {
 	return transport.ContextDialer{}
 }
 
+// kerberosOptions forwards an injected dialer to the KDC dial so a caller's
+// custom transport also carries Kerberos traffic. Returns nil when nothing was
+// injected, preserving the default proxy-aware KDC path.
+func (c *Client) kerberosOptions() []kerberos.Option {
+	if c.injectedDialer == nil {
+		return nil
+	}
+	return []kerberos.Option{kerberos.WithKDCDialer(c.injectedDialer)}
+}
+
+// kdcFallbackWarning reports whether a conn was injected without a dialer, in
+// which case the KDC dial cannot ride the injected transport (a single SMB
+// socket can't reach the KDC) and falls back to the default path.
+func (c *Client) kdcFallbackWarning() bool {
+	return c.injectedConn != nil && c.injectedDialer == nil
+}
+
 // dialConn returns the injected conn if present, otherwise dials address with
 // the default connect timeout. The explicit timeout is load-bearing: the proxy
 // branch of transport.DialContext does not inject one on its own. It also
@@ -154,7 +171,10 @@ func (c *Client) Connect() error {
 			log.Printf("[D] SMB: Using Kerberos Authentication")
 		}
 
-		kClient, err := kerberos.NewClientFromSession(c.Creds, c.Target, c.Creds.DCIP)
+		if c.kdcFallbackWarning() {
+			log.Printf("[!] SMB: injected connection set without WithDialer; the Kerberos KDC dial uses the default transport and will NOT ride your injected stack")
+		}
+		kClient, err := kerberos.NewClientFromSession(c.Creds, c.Target, c.Creds.DCIP, c.kerberosOptions()...)
 		if err != nil {
 			return fmt.Errorf("failed to create kerberos client: %v", err)
 		}

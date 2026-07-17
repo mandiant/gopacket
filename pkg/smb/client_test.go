@@ -134,3 +134,37 @@ func TestDialConnSetsOwnsConn(t *testing.T) {
 		t.Fatalf("ownsConn = false for a dialed conn, want true")
 	}
 }
+
+func TestKerberosOptionsNilWithoutInjection(t *testing.T) {
+	c := NewClient(session.Target{}, &session.Credentials{})
+	if c.kerberosOptions() != nil {
+		t.Fatalf("kerberosOptions = %v, want nil without an injected dialer", c.kerberosOptions())
+	}
+}
+
+func TestKerberosOptionsCarriesInjectedDialer(t *testing.T) {
+	rd := &recordingDialer{}
+	c := NewClient(session.Target{}, &session.Credentials{}, WithDialer(rd))
+	if got := c.kerberosOptions(); len(got) != 1 {
+		t.Fatalf("kerberosOptions len = %d, want 1", len(got))
+	}
+}
+
+func TestKDCFallbackWarning(t *testing.T) {
+	a, b := net.Pipe()
+	defer a.Close()
+	defer b.Close()
+
+	// conn injected, no dialer -> warn.
+	if !NewClient(session.Target{}, &session.Credentials{}, WithConn(a)).kdcFallbackWarning() {
+		t.Fatalf("want warning when conn injected without a dialer")
+	}
+	// conn + dialer -> no warn (dialer covers the KDC).
+	if NewClient(session.Target{}, &session.Credentials{}, WithConn(a), WithDialer(&recordingDialer{})).kdcFallbackWarning() {
+		t.Fatalf("want no warning when a dialer is also supplied")
+	}
+	// nothing injected -> no warn.
+	if NewClient(session.Target{}, &session.Credentials{}).kdcFallbackWarning() {
+		t.Fatalf("want no warning with no injection")
+	}
+}
