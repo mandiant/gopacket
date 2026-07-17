@@ -1,6 +1,6 @@
 module github.com/mandiant/gopacket
 
-go 1.24.13
+go 1.25.0
 
 require (
 	github.com/chzyer/readline v1.5.1
@@ -17,10 +17,10 @@ require (
 	github.com/oiweiwei/go-msrpc v1.2.12
 	github.com/oiweiwei/gokrb5.fork/v9 v9.0.6
 	github.com/rs/zerolog v1.32.0
-	golang.org/x/crypto v0.45.0
-	golang.org/x/net v0.47.0
-	golang.org/x/term v0.39.0
-	golang.org/x/text v0.31.0
+	golang.org/x/crypto v0.52.0
+	golang.org/x/net v0.54.0
+	golang.org/x/term v0.43.0
+	golang.org/x/text v0.37.0
 	software.sslmate.com/src/go-pkcs12 v0.7.0
 )
 
@@ -32,5 +32,5 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/oiweiwei/go-smb2.fork v1.0.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )
