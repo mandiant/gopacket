@@ -66,12 +66,19 @@ func WithDialer(d proxy.ContextDialer) Option {
 }
 
 // WithConn uses an already-open connection for the SMB session instead of
-// dialing. BYPASSES the global -proxy egress control. The caller retains
-// ownership: Close() will NOT close an injected conn. The caller must still set
+// dialing. BYPASSES the global -proxy egress control. The caller must set
 // Target.Host correctly, since the Kerberos SPN ("cifs/<Target.Host>") is
-// derived from it even when the socket is injected. Under Kerberos, the KDC
-// dial honors WithDialer if one was also supplied; WithConn alone leaves the
-// KDC dial on the default proxy-aware path and Connect() logs a warning.
+// derived from it even when the socket is injected.
+//
+// Ownership: if Connect() fails before a session is established, the injected
+// conn is left open for the caller to manage. On a SUCCESSFUL session,
+// however, Close() performs an SMB Logoff that tears down the underlying
+// transport and closes the conn — including an injected one. A caller that
+// must keep the conn alive past the SMB session should not call Close().
+//
+// Under Kerberos, the KDC dial honors WithDialer if one was also supplied;
+// WithConn alone leaves the KDC dial on the default proxy-aware path and
+// Connect() logs a warning.
 func WithConn(conn net.Conn) Option {
 	return func(c *Client) { c.injectedConn = conn }
 }
@@ -274,6 +281,10 @@ func (c *Client) Close() {
 		c.ipcShare.Umount()
 	}
 	if c.Session != nil {
+		// Logoff tears down the smb2 transport, which closes the underlying
+		// conn even when it was injected via WithConn. That is why
+		// closeConnIfOwned below only needs to guard the no-session (failed
+		// Connect) path. See WithConn's doc for the ownership contract.
 		c.Session.Logoff()
 	}
 	c.closeConnIfOwned()
