@@ -17,6 +17,7 @@ package kerberos
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/asn1"
 	"encoding/binary"
 	"encoding/hex"
@@ -24,6 +25,9 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
+
+	"golang.org/x/net/proxy"
 
 	"github.com/mandiant/gopacket/internal/build"
 	"github.com/mandiant/gopacket/pkg/session"
@@ -49,6 +53,34 @@ type TransportKDCDialer struct{}
 
 func (TransportKDCDialer) Dial(network, address string) (net.Conn, error) {
 	return transport.DialTimeout(network, address, 10)
+}
+
+// kdcConfig holds NewClientFromSession options.
+type kdcConfig struct {
+	dialer proxy.ContextDialer // nil = default TransportKDCDialer
+}
+
+// Option configures NewClientFromSession.
+type Option func(*kdcConfig)
+
+// WithKDCDialer routes KDC connections (AS/TGS) through d instead of the
+// default proxy-aware TransportKDCDialer. Supplying a dialer BYPASSES the
+// global -proxy egress control; the caller owns egress.
+func WithKDCDialer(d proxy.ContextDialer) Option {
+	return func(c *kdcConfig) { c.dialer = d }
+}
+
+// contextKDCDialer adapts a proxy.ContextDialer to gokrb5's context-less
+// KDCDialer. gokrb5 gives us no context, so we bound the connect with the same
+// 10s deadline TransportKDCDialer uses.
+type contextKDCDialer struct {
+	d proxy.ContextDialer
+}
+
+func (a contextKDCDialer) Dial(network, address string) (net.Conn, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return a.d.DialContext(ctx, network, address)
 }
 
 // The opsec invariants every gokrb5 config in this project must enforce:
@@ -151,10 +183,19 @@ type Client struct {
 	username  string
 }
 
-func NewClientFromSession(creds *session.Credentials, target session.Target, dcIP string) (*Client, error) {
+func NewClientFromSession(creds *session.Credentials, target session.Target, dcIP string, opts ...Option) (*Client, error) {
 	realm := strings.ToUpper(creds.Domain)
 	if realm == "" {
 		return nil, fmt.Errorf("domain/realm is required for Kerberos")
+	}
+
+	var kc kdcConfig
+	for _, opt := range opts {
+		opt(&kc)
+	}
+	var kdcDialer client.KDCDialer = TransportKDCDialer{}
+	if kc.dialer != nil {
+		kdcDialer = contextKDCDialer{d: kc.dialer}
 	}
 
 	kdc := dcIP
@@ -214,7 +255,7 @@ func NewClientFromSession(creds *session.Credentials, target session.Target, dcI
 			}
 
 			// Try to create client from ccache (requires TGT)
-			cl, err := client.NewFromCCache(TransportKDCDialer{}, ccache, cfg)
+			cl, err := client.NewFromCCache(kdcDialer, ccache, cfg)
 			if err == nil {
 				krbClient.KrbClient = cl
 			}
@@ -241,7 +282,7 @@ func NewClientFromSession(creds *session.Credentials, target session.Target, dcI
 		if err != nil {
 			return nil, fmt.Errorf("failed to load keytab %s: %v", creds.Keytab, err)
 		}
-		krbClient.KrbClient = client.NewWithKeytab(TransportKDCDialer{}, creds.Username, realm, kt, cfg, client.DisablePAFXFAST(true))
+		krbClient.KrbClient = client.NewWithKeytab(kdcDialer, creds.Username, realm, kt, cfg, client.DisablePAFXFAST(true))
 		return krbClient, nil
 	}
 
@@ -250,7 +291,7 @@ func NewClientFromSession(creds *session.Credentials, target session.Target, dcI
 		// Check if it's an AES key (64 hex chars)?
 		// Note: Manual Keytab construction is blocked by unexported keytab.entry in gokrb5 v8.
 		// For now, treat everything as a password.
-		krbClient.KrbClient = client.NewWithPassword(TransportKDCDialer{}, creds.Username, realm, creds.Password, cfg, client.DisablePAFXFAST(true))
+		krbClient.KrbClient = client.NewWithPassword(kdcDialer, creds.Username, realm, creds.Password, cfg, client.DisablePAFXFAST(true))
 		return krbClient, nil
 	}
 	return nil, fmt.Errorf("no valid kerberos credentials found (set KRB5CCNAME, provide password, or use -keytab)")
