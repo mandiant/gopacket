@@ -18,7 +18,7 @@ require (
 	github.com/oiweiwei/gokrb5.fork/v9 v9.0.6
 	github.com/rs/zerolog v1.32.0
 	golang.org/x/crypto v0.52.0
-	golang.org/x/net v0.54.0
+	golang.org/x/net v0.55.0
 	golang.org/x/term v0.43.0
 	golang.org/x/text v0.37.0
 	software.sslmate.com/src/go-pkcs12 v0.7.0
