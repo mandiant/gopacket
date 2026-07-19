@@ -1,7 +1,6 @@
 package smb2
 
 import (
-	"bytes"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -93,19 +92,18 @@ func sessionSetup(conn *conn, i Initiator, ctx context.Context) (*session, error
 	case SMB311:
 		s.preauthIntegrityHashValue = conn.preauthIntegrityHashValue
 
-		switch conn.preauthIntegrityHashId {
-		case SHA512:
-			h := sha512.New()
-			h.Write(s.preauthIntegrityHashValue[:])
-			h.Write(rr.pkt)
-			h.Sum(s.preauthIntegrityHashValue[:0])
+		// Hash the SESSION_SETUP request we just sent.
+		s.updatePreauthIntegrity(conn.preauthIntegrityHashId, rr.pkt)
 
-			h.Reset()
-			h.Write(s.preauthIntegrityHashValue[:])
-			h.Write(pkt)
-			h.Sum(s.preauthIntegrityHashValue[:0])
+		// Only hash the response when the exchange continues (another leg
+		// follows). The final SESSION_SETUP response — STATUS_SUCCESS, which
+		// Kerberos returns on the very first leg — is NOT part of the preauth
+		// integrity hash. Folding it in (and then re-hashing this leg's request
+		// again below) produced the wrong SMB 3.1.1 signing key for the
+		// single-leg Kerberos path.
+		if status == STATUS_MORE_PROCESSING_REQUIRED {
+			s.updatePreauthIntegrity(conn.preauthIntegrityHashId, pkt)
 		}
-
 	}
 
 	// gopacket Fix: Only proceed to second leg if MORE_PROCESSING_REQUIRED
@@ -127,7 +125,13 @@ func sessionSetup(conn *conn, i Initiator, ctx context.Context) (*session, error
 		if err != nil {
 			return nil, err
 		}
-		
+
+		// Chain this (second) SESSION_SETUP request into the preauth hash.
+		// Its response is the final one (STATUS_SUCCESS) and is excluded.
+		if conn.dialect == SMB311 {
+			s.updatePreauthIntegrity(conn.preauthIntegrityHashId, rr.pkt)
+		}
+
 		pkt, err = s.recv(rr)
 		if err != nil {
 			return nil, err
@@ -201,14 +205,9 @@ func sessionSetup(conn *conn, i Initiator, ctx context.Context) (*session, error
 				return nil, &InternalError{err.Error()}
 			}
 		case SMB311:
-			switch conn.preauthIntegrityHashId {
-			case SHA512:
-				h := sha512.New()
-				h.Write(s.preauthIntegrityHashValue[:])
-				h.Write(rr.pkt)
-				h.Sum(s.preauthIntegrityHashValue[:0])
-			}
-
+			// Session.PreauthIntegrityHashValue is already finalized above:
+			// every participating SESSION_SETUP message was chained in as it
+			// was sent/received, so derive the signing key directly from it.
 			signingKey := kdf(SessionKey, []byte("SMBSigningKey\x00"), s.preauthIntegrityHashValue[:])
 			ciph, err := aes.NewCipher(signingKey)
 			if err != nil {
@@ -322,6 +321,21 @@ func (s *session) recv(rr *requestResponse) (pkt []byte, err error) {
 	return pkt, err
 }
 
+// updatePreauthIntegrity folds data into Session.PreauthIntegrityHashValue
+// (MS-SMB2 3.2.5.3.1). The negotiate exchange seeds the value on the conn; the
+// session then chains each SMB2 SESSION_SETUP message that participates in the
+// preauth hash. The final SESSION_SETUP response (STATUS_SUCCESS) is excluded
+// by the caller.
+func (s *session) updatePreauthIntegrity(hashId uint16, data []byte) {
+	switch hashId {
+	case SHA512:
+		h := sha512.New()
+		h.Write(s.preauthIntegrityHashValue[:])
+		h.Write(data)
+		h.Sum(s.preauthIntegrityHashValue[:0])
+	}
+}
+
 func (s *session) sign(pkt []byte) []byte {
 	p := PacketCodec(pkt)
 
@@ -353,11 +367,9 @@ func (s *session) verify(pkt []byte) (ok bool) {
 
 	p.SetSignature(h.Sum(nil))
 
-	if !bytes.Equal(signature, p.Signature()) {
-		fmt.Println("[!] Signature Mismatch! Bypassing verification for debug...")
-		// return false // Original behavior
-	}
-	return true
+	// Constant-time compare: these are cryptographic MACs (HMAC-SHA256 /
+	// AES-CMAC), so avoid leaking match position via timing.
+	return hmac.Equal(signature, p.Signature())
 }
 
 func (s *session) encrypt(pkt []byte) ([]byte, error) {
