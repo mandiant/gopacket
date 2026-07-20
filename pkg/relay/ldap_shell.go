@@ -87,7 +87,11 @@ func ldapShellToggleUAC(conn net.Conn, client *gopacketldap.Client, baseDN, user
 
 	entry := sr.Entries[0]
 	uacStr := entry.GetAttributeValue("userAccountControl")
-	uac, _ := strconv.Atoi(uacStr)
+	uac, err := strconv.Atoi(uacStr)
+	if err != nil {
+		fmt.Fprintf(conn, "Error: invalid userAccountControl value %q: %v\n", uacStr, err)
+		return
+	}
 	fmt.Fprintf(conn, "Original userAccountControl: %d\n", uac)
 
 	if enable {
@@ -127,7 +131,7 @@ func ldapShellSearch(conn net.Conn, client *gopacketldap.Client, args []string) 
 		filter = fmt.Sprintf("(|(name=*%s*)(distinguishedName=*%s*)(sAMAccountName=*%s*))", escaped, escaped, escaped)
 	}
 
-	attributes := []string{"name", "distinguishedName", "sAMAccountName", "objectSid"}
+	attributes := []string{"name", "distinguishedName", "sAMAccountName"}
 	attributes = append(attributes, extraAttrs...)
 
 	sr, err := client.Search(baseDN, filter, attributes)
@@ -226,17 +230,27 @@ func ldapShellGetLAPSPassword(conn net.Conn, client *gopacketldap.Client, args [
 	}
 	sr, err := client.Search(baseDN,
 		fmt.Sprintf("(sAMAccountName=%s)", goldap.EscapeFilter(args[0])),
-		[]string{"ms-MCS-AdmPwd"})
+		[]string{"ms-MCS-AdmPwd", "msLAPS-Password", "msLAPS-EncryptedPassword"})
 	if err != nil || len(sr.Entries) == 0 {
 		fmt.Fprintf(conn, "Error: computer not found: %s\n", args[0])
 		return
 	}
 	entry := sr.Entries[0]
 	fmt.Fprintf(conn, "Found Computer DN: %s\n", entry.DN)
-	password := entry.GetAttributeValue("ms-MCS-AdmPwd")
-	if password != "" {
-		fmt.Fprintf(conn, "LAPS Password: %s\n", password)
-	} else {
+	found := false
+	if password := entry.GetAttributeValue("ms-MCS-AdmPwd"); password != "" {
+		fmt.Fprintf(conn, "LAPS v1 Password: %s\n", password)
+		found = true
+	}
+	if password := entry.GetAttributeValue("msLAPS-Password"); password != "" {
+		fmt.Fprintf(conn, "LAPS v2 Password: %s\n", password)
+		found = true
+	}
+	if password := entry.GetAttributeValue("msLAPS-EncryptedPassword"); password != "" {
+		fmt.Fprintf(conn, "LAPS v2 Encrypted Password: %s\n", password)
+		found = true
+	}
+	if !found {
 		fmt.Fprintf(conn, "Unable to Read LAPS Password for Computer\n")
 	}
 }
@@ -281,27 +295,21 @@ func ldapShellAddComputer(conn net.Conn, client *gopacketldap.Client, args []str
 	hostname := strings.TrimSuffix(computerName, "$")
 	fmt.Fprintf(conn, "Attempting to add a new computer with the name: %s\n", computerName)
 
-	var spns []string
-	if nospns {
-		spns = []string{
-			fmt.Sprintf("HOST/%s.%s", hostname, domain),
-		}
-	} else {
-		spns = []string{
-			fmt.Sprintf("HOST/%s", hostname),
-			fmt.Sprintf("HOST/%s.%s", hostname, domain),
-			fmt.Sprintf("RestrictedKrbHost/%s", hostname),
-			fmt.Sprintf("RestrictedKrbHost/%s.%s", hostname, domain),
-		}
-	}
-
 	dn := fmt.Sprintf("CN=%s,CN=Computers,%s", hostname, baseDN)
 	addReq := goldap.NewAddRequest(dn, nil)
 	addReq.Attribute("objectClass", []string{"top", "person", "organizationalPerson", "user", "computer"})
 	addReq.Attribute("sAMAccountName", []string{computerName})
 	addReq.Attribute("userAccountControl", []string{"4096"})
 	addReq.Attribute("dNSHostName", []string{fmt.Sprintf("%s.%s", hostname, domain)})
-	addReq.Attribute("servicePrincipalName", spns)
+	if !nospns {
+		spns := []string{
+			fmt.Sprintf("HOST/%s", hostname),
+			fmt.Sprintf("HOST/%s.%s", hostname, domain),
+			fmt.Sprintf("RestrictedKrbHost/%s", hostname),
+			fmt.Sprintf("RestrictedKrbHost/%s.%s", hostname, domain),
+		}
+		addReq.Attribute("servicePrincipalName", spns)
+	}
 	addReq.Attribute("unicodePwd", []string{string(encodeUnicodePassword(password))})
 
 	if err := client.Conn.Add(addReq); err != nil {
@@ -506,7 +514,11 @@ func ldapShellSetRBCD(conn net.Conn, client *gopacketldap.Client, args []string)
 	}
 	target := sr.Entries[0]
 	targetSIDBytes := target.GetRawAttributeValue("objectSid")
-	targetSID, _, _ := security.ParseSIDBytes(targetSIDBytes)
+	targetSID, _, err := security.ParseSIDBytes(targetSIDBytes)
+	if err != nil {
+		fmt.Fprintf(conn, "Error parsing target SID: %v\n", err)
+		return
+	}
 	fmt.Fprintf(conn, "Found Target DN: %s\n", target.DN)
 	fmt.Fprintf(conn, "Target SID: %s\n\n", targetSID.String())
 
@@ -528,7 +540,7 @@ func ldapShellSetRBCD(conn net.Conn, client *gopacketldap.Client, args []string)
 		if err != nil {
 			sd = nil
 		}
-		if sd != nil {
+		if sd != nil && sd.DACL != nil {
 			fmt.Fprintf(conn, "Currently allowed sids:\n")
 			for _, ace := range sd.DACL.ACEs {
 				fmt.Fprintf(conn, "    %s\n", ace.SID.String())
@@ -579,7 +591,11 @@ func ldapShellClearRBCD(conn net.Conn, client *gopacketldap.Client, args []strin
 	}
 	target := sr.Entries[0]
 	targetSIDBytes := target.GetRawAttributeValue("objectSid")
-	targetSID, _, _ := security.ParseSIDBytes(targetSIDBytes)
+	targetSID, _, err := security.ParseSIDBytes(targetSIDBytes)
+	if err != nil {
+		fmt.Fprintf(conn, "Error parsing target SID: %v\n", err)
+		return
+	}
 	fmt.Fprintf(conn, "Found Target DN: %s\n", target.DN)
 	fmt.Fprintf(conn, "Target SID: %s\n\n", targetSID.String())
 
@@ -768,5 +784,5 @@ func ldapShellStartTLS(conn net.Conn, client *gopacketldap.Client) {
 		fmt.Fprintf(conn, "StartTLS failed: %v\n", err)
 		return
 	}
-	fmt.Fprintf(conn, "StartTLS succeded, you are now using LDAPS!\n")
+	fmt.Fprintf(conn, "StartTLS succeeded, you are now using LDAPS!\n")
 }
