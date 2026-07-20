@@ -15,6 +15,7 @@
 package relay
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 	"strconv"
@@ -755,4 +756,17 @@ func ldapShellSetDontReqPreauth(conn net.Conn, client *gopacketldap.Client, args
 	default:
 		fmt.Fprintf(conn, "Error: flag must be true or false\n")
 	}
+}
+
+func ldapShellStartTLS(conn net.Conn, client *gopacketldap.Client) {
+	if _, ok := client.Conn.TLSConnectionState(); ok {
+		fmt.Fprintf(conn, "It seems you are already connected through a TLS channel.\n")
+		return
+	}
+	fmt.Fprintf(conn, "Sending StartTLS command...\n")
+	if err := client.Conn.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
+		fmt.Fprintf(conn, "StartTLS failed: %v\n", err)
+		return
+	}
+	fmt.Fprintf(conn, "StartTLS succeded, you are now using LDAPS!\n")
 }

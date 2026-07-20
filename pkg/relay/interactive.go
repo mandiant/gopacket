@@ -146,7 +146,8 @@ func runSMBShell(conn net.Conn, session interface{}) {
 	}
 }
 
-// runLDAPShell provides a basic LDAP interactive shell over the TCP connection.
+// runLDAPShell provides an interactive LDAP shell over the TCP connection.
+// Matches impacket's ldap_shell.py command set for relay parity.
 func runLDAPShell(conn net.Conn, session interface{}) {
 	client, ok := session.(*gopacketldap.Client)
 	if !ok {
@@ -167,14 +168,31 @@ func runLDAPShell(conn net.Conn, session interface{}) {
 
 		parts := strings.Fields(line)
 		cmd := strings.ToLower(parts[0])
+		args := parts[1:]
 
 		switch cmd {
 		case "help":
-			fmt.Fprintf(conn, "Available commands:\n")
-			fmt.Fprintf(conn, "  get_dn                   - Get default naming context\n")
-			fmt.Fprintf(conn, "  search <filter>          - LDAP search (subtree from base DN)\n")
-			fmt.Fprintf(conn, "  who                      - Show current user (whoami)\n")
-			fmt.Fprintf(conn, "  exit                     - Close shell\n")
+			fmt.Fprintf(conn, " add_computer computer [password] [nospns] - Adds a new computer to the domain with the specified password. Requires LDAPS.\n")
+			fmt.Fprintf(conn, " rename_computer current_name new_name - Sets the SAMAccountName attribute on a computer object to a new value.\n")
+			fmt.Fprintf(conn, " add_user new_user [parent] - Creates a new user.\n")
+			fmt.Fprintf(conn, " add_user_to_group user group - Adds a user to a group.\n")
+			fmt.Fprintf(conn, " change_password user [password] - Attempt to change a given user's password. Requires LDAPS.\n")
+			fmt.Fprintf(conn, " clear_rbcd target - Clear the resource based constrained delegation configuration information.\n")
+			fmt.Fprintf(conn, " disable_account user - Disable the user's account.\n")
+			fmt.Fprintf(conn, " enable_account user - Enable the user's account.\n")
+			fmt.Fprintf(conn, " dump - Dumps the domain.\n")
+			fmt.Fprintf(conn, " search query [attributes,] - Search users and groups by name, distinguishedName and sAMAccountName.\n")
+			fmt.Fprintf(conn, " get_user_groups user - Retrieves all groups this user is a member of.\n")
+			fmt.Fprintf(conn, " get_group_users group - Retrieves all members of a group.\n")
+			fmt.Fprintf(conn, " get_laps_password computer - Retrieves the LAPS passwords associated with a given computer (sAMAccountName).\n")
+			fmt.Fprintf(conn, " grant_control [search_base] target grantee - Grant full control on a given target object to the grantee (sAMAccountName).\n")
+			fmt.Fprintf(conn, " set_dontreqpreauth user true/false - Set the don't require pre-authentication flag to true or false.\n")
+			fmt.Fprintf(conn, " set_rbcd target grantee - Grant the grantee the ability to perform RBCD to the target.\n")
+			fmt.Fprintf(conn, " start_tls - Send a StartTLS command to upgrade from LDAP to LDAPS.\n")
+			fmt.Fprintf(conn, " write_gpo_dacl user gpoSID - Write a full control ACE to the gpo for the given user.\n")
+			fmt.Fprintf(conn, " get_dn - Get default naming context.\n")
+			fmt.Fprintf(conn, " who - Show current user (whoami).\n")
+			fmt.Fprintf(conn, " exit - Terminates this session.\n")
 		case "get_dn":
 			dn, err := client.GetDefaultNamingContext()
 			if err != nil {
@@ -182,7 +200,7 @@ func runLDAPShell(conn net.Conn, session interface{}) {
 			} else {
 				fmt.Fprintf(conn, "%s\n", dn)
 			}
-		case "who":
+		case "who", "whoami":
 			res, err := client.Conn.WhoAmI(nil)
 			if err != nil {
 				fmt.Fprintf(conn, "Error: %v\n", err)
@@ -190,29 +208,41 @@ func runLDAPShell(conn net.Conn, session interface{}) {
 				fmt.Fprintf(conn, "%s\n", res.AuthzID)
 			}
 		case "search":
-			if len(parts) < 2 {
-				fmt.Fprintf(conn, "Usage: search <filter>\n")
-			} else {
-				filter := strings.Join(parts[1:], " ")
-				baseDN, err := client.GetDefaultNamingContext()
-				if err != nil {
-					fmt.Fprintf(conn, "Error getting base DN: %v\n", err)
-				} else {
-					sr, err := client.Search(baseDN, filter, []string{"dn", "sAMAccountName", "objectClass"})
-					if err != nil {
-						fmt.Fprintf(conn, "Error: %v\n", err)
-					} else {
-						fmt.Fprintf(conn, "Found %d entries:\n", len(sr.Entries))
-						for _, entry := range sr.Entries {
-							fmt.Fprintf(conn, "  DN: %s\n", entry.DN)
-							name := entry.GetAttributeValue("sAMAccountName")
-							if name != "" {
-								fmt.Fprintf(conn, "    sAMAccountName: %s\n", name)
-							}
-						}
-					}
-				}
-			}
+			ldapShellSearch(conn, client, args)
+		case "get_user_groups":
+			ldapShellGetUserGroups(conn, client, args)
+		case "get_group_users":
+			ldapShellGetGroupUsers(conn, client, args)
+		case "get_laps_password":
+			ldapShellGetLAPSPassword(conn, client, args)
+		case "dump":
+			ldapShellDump(conn, client)
+		case "add_computer":
+			ldapShellAddComputer(conn, client, args)
+		case "rename_computer":
+			ldapShellRenameComputer(conn, client, args)
+		case "add_user":
+			ldapShellAddUser(conn, client, args)
+		case "add_user_to_group":
+			ldapShellAddUserToGroup(conn, client, args)
+		case "change_password":
+			ldapShellChangePassword(conn, client, args)
+		case "disable_account":
+			ldapShellDisableAccount(conn, client, args)
+		case "enable_account":
+			ldapShellEnableAccount(conn, client, args)
+		case "set_rbcd":
+			ldapShellSetRBCD(conn, client, args)
+		case "clear_rbcd":
+			ldapShellClearRBCD(conn, client, args)
+		case "grant_control":
+			ldapShellGrantControl(conn, client, args)
+		case "write_gpo_dacl":
+			ldapShellWriteGPODacl(conn, client, args)
+		case "set_dontreqpreauth":
+			ldapShellSetDontReqPreauth(conn, client, args)
+		case "start_tls":
+			ldapShellStartTLS(conn, client)
 		case "exit", "quit":
 			fmt.Fprintf(conn, "Bye!\n")
 			return
