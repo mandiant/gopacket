@@ -249,3 +249,235 @@ func ldapShellDump(conn net.Conn, client *gopacketldap.Client) {
 	}
 	fmt.Fprintf(conn, "Domain info dumped into lootdir!\n")
 }
+
+func ldapShellAddComputer(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) == 0 {
+		fmt.Fprintf(conn, "Usage: add_computer <name> [password] [nospns]\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	domain := extractDomainFromDN(baseDN)
+
+	computerName := args[0]
+	if !strings.HasSuffix(computerName, "$") {
+		computerName += "$"
+	}
+
+	password := generateRandomPassword(15)
+	nospns := false
+	for _, a := range args[1:] {
+		if strings.ToLower(a) == "nospns" {
+			nospns = true
+		} else {
+			password = a
+		}
+	}
+
+	hostname := strings.TrimSuffix(computerName, "$")
+	fmt.Fprintf(conn, "Attempting to add a new computer with the name: %s\n", computerName)
+
+	var spns []string
+	if nospns {
+		spns = []string{
+			fmt.Sprintf("HOST/%s.%s", hostname, domain),
+		}
+	} else {
+		spns = []string{
+			fmt.Sprintf("HOST/%s", hostname),
+			fmt.Sprintf("HOST/%s.%s", hostname, domain),
+			fmt.Sprintf("RestrictedKrbHost/%s", hostname),
+			fmt.Sprintf("RestrictedKrbHost/%s.%s", hostname, domain),
+		}
+	}
+
+	dn := fmt.Sprintf("CN=%s,CN=Computers,%s", hostname, baseDN)
+	addReq := goldap.NewAddRequest(dn, nil)
+	addReq.Attribute("objectClass", []string{"top", "person", "organizationalPerson", "user", "computer"})
+	addReq.Attribute("sAMAccountName", []string{computerName})
+	addReq.Attribute("userAccountControl", []string{"4096"})
+	addReq.Attribute("dNSHostName", []string{fmt.Sprintf("%s.%s", hostname, domain)})
+	addReq.Attribute("servicePrincipalName", spns)
+	addReq.Attribute("unicodePwd", []string{string(encodeUnicodePassword(password))})
+
+	if err := client.Conn.Add(addReq); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unwilling") {
+			fmt.Fprintf(conn, "Failed to add a new computer. The server denied the operation. Try relaying to LDAP with TLS enabled (ldaps) or escalating an existing user.\n")
+		} else {
+			fmt.Fprintf(conn, "Failed to add a new computer: %v\n", err)
+		}
+		return
+	}
+	fmt.Fprintf(conn, "Adding new computer with username: %s and password: %s result: OK\n", computerName, password)
+}
+
+func ldapShellRenameComputer(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) != 2 {
+		fmt.Fprintf(conn, "Usage: rename_computer <current_name> <new_name>\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	sr, err := client.Search(baseDN,
+		fmt.Sprintf("(sAMAccountName=%s)", goldap.EscapeFilter(args[0])),
+		[]string{"sAMAccountName"})
+	if err != nil || len(sr.Entries) == 0 {
+		fmt.Fprintf(conn, "Error: computer not found: %s\n", args[0])
+		return
+	}
+	entry := sr.Entries[0]
+	fmt.Fprintf(conn, "Original sAMAccountName: %s\n", entry.GetAttributeValue("sAMAccountName"))
+	fmt.Fprintf(conn, "New sAMAccountName: %s\n", args[1])
+
+	modReq := goldap.NewModifyRequest(entry.DN, nil)
+	modReq.Replace("sAMAccountName", []string{args[1]})
+	if err := client.Conn.Modify(modReq); err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	fmt.Fprintf(conn, "Updated sAMAccountName successfully\n")
+}
+
+func ldapShellAddUser(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) == 0 {
+		fmt.Fprintf(conn, "Usage: add_user <username> [parent_dn]\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+
+	newUser := args[0]
+	parentDN := fmt.Sprintf("CN=Users,%s", baseDN)
+	if len(args) > 1 {
+		parentDN = args[1]
+	}
+
+	password := generateRandomPassword(15)
+	userDN := fmt.Sprintf("CN=%s,%s", newUser, parentDN)
+
+	fmt.Fprintf(conn, "Attempting to create user in: %s\n", parentDN)
+
+	addReq := goldap.NewAddRequest(userDN, nil)
+	addReq.Attribute("objectClass", []string{"top", "person", "organizationalPerson", "user"})
+	addReq.Attribute("objectCategory", []string{fmt.Sprintf("CN=Person,CN=Schema,CN=Configuration,%s", baseDN)})
+	addReq.Attribute("distinguishedName", []string{userDN})
+	addReq.Attribute("cn", []string{newUser})
+	addReq.Attribute("sn", []string{newUser})
+	addReq.Attribute("givenName", []string{newUser})
+	addReq.Attribute("displayName", []string{newUser})
+	addReq.Attribute("name", []string{newUser})
+	addReq.Attribute("userAccountControl", []string{"512"})
+	addReq.Attribute("accountExpires", []string{"0"})
+	addReq.Attribute("sAMAccountName", []string{newUser})
+	addReq.Attribute("unicodePwd", []string{string(encodeUnicodePassword(password))})
+
+	if err := client.Conn.Add(addReq); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unwilling") {
+			fmt.Fprintf(conn, "Failed to add a new user. The server denied the operation. Try relaying to LDAP with TLS enabled (ldaps) or escalating an existing user.\n")
+		} else {
+			fmt.Fprintf(conn, "Failed to add a new user: %v\n", err)
+		}
+		return
+	}
+	fmt.Fprintf(conn, "Adding new user with username: %s and password: %s result: OK\n", newUser, password)
+}
+
+func ldapShellAddUserToGroup(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) != 2 {
+		fmt.Fprintf(conn, "Usage: add_user_to_group <user> <group>\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	userDN, err := ldapShellResolveDN(client, baseDN, args[0])
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	groupDN, err := ldapShellResolveDN(client, baseDN, args[1])
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+
+	modReq := goldap.NewModifyRequest(groupDN, nil)
+	modReq.Add("member", []string{userDN})
+	if err := client.Conn.Modify(modReq); err != nil {
+		fmt.Fprintf(conn, "Failed to add user to group: %v\n", err)
+		return
+	}
+
+	userName := strings.Split(strings.TrimPrefix(userDN, "CN="), ",")[0]
+	groupName := strings.Split(strings.TrimPrefix(groupDN, "CN="), ",")[0]
+	fmt.Fprintf(conn, "Adding user: %s to group %s result: OK\n", userName, groupName)
+}
+
+func ldapShellChangePassword(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) == 0 || len(args) > 2 {
+		fmt.Fprintf(conn, "Usage: change_password <user> [password]\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	userDN, err := ldapShellResolveDN(client, baseDN, args[0])
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	fmt.Fprintf(conn, "Got User DN: %s\n", userDN)
+
+	password := generateRandomPassword(15)
+	if len(args) == 2 {
+		password = args[1]
+	}
+	fmt.Fprintf(conn, "Attempting to set new password of: %s\n", password)
+
+	modReq := goldap.NewModifyRequest(userDN, nil)
+	modReq.Replace("unicodePwd", []string{string(encodeUnicodePassword(password))})
+	if err := client.Conn.Modify(modReq); err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	fmt.Fprintf(conn, "Password changed successfully!\n")
+}
+
+func ldapShellDisableAccount(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) == 0 {
+		fmt.Fprintf(conn, "Usage: disable_account <user>\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	ldapShellToggleUAC(conn, client, baseDN, args[0], 0x2, true)
+}
+
+func ldapShellEnableAccount(conn net.Conn, client *gopacketldap.Client, args []string) {
+	if len(args) == 0 {
+		fmt.Fprintf(conn, "Usage: enable_account <user>\n")
+		return
+	}
+	baseDN, err := client.GetDefaultNamingContext()
+	if err != nil {
+		fmt.Fprintf(conn, "Error: %v\n", err)
+		return
+	}
+	ldapShellToggleUAC(conn, client, baseDN, args[0], 0x2, false)
+}
