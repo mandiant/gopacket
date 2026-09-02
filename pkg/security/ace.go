@@ -83,6 +83,9 @@ func ParseACE(data []byte) (*ACE, int, error) {
 	}
 
 	// Parse SID from remaining data
+	if offset > aceSize {
+		return nil, 0, fmt.Errorf("ACE object header of %d bytes exceeds ACE size %d", offset, aceSize)
+	}
 	sid, _, err := ParseSIDBytes(data[offset:aceSize])
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to parse ACE SID: %v", err)
