@@ -234,17 +234,24 @@ build_target() {
     if [ "$t" = "native" ]; then
         if ! command -v gcc &>/dev/null; then
             echo -e "${RED}Error: gcc is required for the native target (cgo)${NC}"
-            echo "Install with: apt install build-essential (Debian/Ubuntu) or yum install gcc (RHEL/CentOS)"
+            echo "Install with: apt install build-essential (Debian/Ubuntu), yum install gcc (RHEL/CentOS), or xcode-select --install (macOS)"
             return 1
         fi
     fi
 
     local has_libpcap=true
     if $pcap_check; then
+        local sdk_pcap=""
+        if command -v xcrun &>/dev/null; then
+            sdk_pcap="$(xcrun --show-sdk-path 2>/dev/null)/usr/include/pcap.h"
+        fi
         if ! [ -f /usr/include/pcap.h ] \
            && ! [ -f /usr/include/pcap/pcap.h ] \
            && ! [ -f /usr/local/include/pcap.h ] \
            && ! [ -f /opt/homebrew/include/pcap.h ] \
+           && ! [ -f /opt/homebrew/opt/libpcap/include/pcap.h ] \
+           && ! [ -f /usr/local/opt/libpcap/include/pcap.h ] \
+           && ! { [ -n "$sdk_pcap" ] && [ -f "$sdk_pcap" ]; } \
            && ! pkg-config --exists libpcap 2>/dev/null; then
             has_libpcap=false
             echo -e "${YELLOW}Warning: libpcap development headers not found${NC}"
@@ -287,8 +294,9 @@ build_target() {
         fi
         local out_path="${outdir}/${out_name}${exe_suffix}"
         local build_cmd=(go build -o "$out_path")
-        if [ "$t" = "native" ]; then
-            # Static-link libgcc so binaries run on minimally-versioned hosts.
+        if [ "$t" = "native" ] && [ "$(uname -s)" = "Linux" ]; then
+            # Static-link libgcc on Linux so binaries run on minimally-versioned
+            # hosts. Apple's clang linker on macOS does not support -static-libgcc.
             build_cmd+=(-ldflags '-linkmode external -extldflags "-static-libgcc"')
         fi
         build_cmd+=("./tools/${tool}")
@@ -321,10 +329,12 @@ install_native() {
     echo "Installing to ${INSTALL_DIR}/ as gopacket-<toolname>..."
 
     local SUDO=""
+    mkdir -p "${INSTALL_DIR}" 2>/dev/null || true
     if [ ! -w "${INSTALL_DIR}" ]; then
         echo -e "${YELLOW}Note: ${INSTALL_DIR} requires elevated permissions${NC}"
         echo "Re-running install step with sudo..."
         SUDO="sudo"
+        $SUDO mkdir -p "${INSTALL_DIR}"
     fi
 
     local tools
